@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "chesty-cli",
+    "chesty-core"
+]
+
+[profile.release]
+debug = true
