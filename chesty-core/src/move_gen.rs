@@ -118,6 +118,42 @@ macro_rules! quiescence_impl_next_direction_move {
     };
 }
 
+macro_rules! impl_next_move_mobility {
+    ($move_list:ident, $method_name:ident) => {
+        fn $method_name(self, position: Position, board: &Board, moves: &mut u16) {
+            for (x, y) in $move_list {
+                if let Some(move_to) = position.checked_add_to(x, y) {
+                    if board[move_to].team() == !(self.team()) {
+                        *moves += 1;
+                    }
+                }
+            }
+        }
+    };
+}
+
+macro_rules! impl_next_direction_move_mobility {
+    ($move_list:ident, $method_name:ident) => {
+        fn $method_name(self, position: Position, board: &Board, moves: &mut u16) {
+            for (x, y) in $move_list {
+                let mut move_to = position;
+
+                while let Some(possible_move) = move_to.checked_add_to(x, y) {
+                    move_to = possible_move;
+                    match self.team().compare(&board[possible_move].team()) {
+                        TeamComparison::Same => break,
+                        TeamComparison::Different => {
+                            *moves += 1;
+                            break;
+                        }
+                        TeamComparison::None => {}
+                    }
+                }
+            }
+        }
+    };
+}
+
 impl Board {
     /// Checks if a piece on the team of `attacking_team` attacks the
     /// square at `position`
@@ -188,6 +224,19 @@ impl Piece {
             PieceKind::Bishop => self.quiescence_bishop_moves(position, board, moves),
             PieceKind::Queen => self.quiescence_queen_moves(position, board, moves),
             PieceKind::King => self.quiescence_king_moves(position, board, moves),
+        }
+    }
+    /// Adds the number of moves avaliable to `moves`. King and pawn moves are
+    /// ignored
+    pub fn mobility(&self, position: Position, board: &Board, moves: &mut u16) {
+        match self.kind() {
+            PieceKind::None => {}
+            PieceKind::Pawn => {}
+            PieceKind::Rook => self.rook_mobility(position, board, moves),
+            PieceKind::Knight => self.knight_mobility(position, board, moves),
+            PieceKind::Bishop => self.bishop_mobility(position, board, moves),
+            PieceKind::Queen => self.queen_mobility(position, board, moves),
+            PieceKind::King => {}
         }
     }
 
@@ -296,4 +345,10 @@ impl Piece {
     quiescence_impl_next_direction_move!(ROOK_DIRECTIONS, quiescence_rook_moves);
     quiescence_impl_next_direction_move!(BISHOP_DIRECTIONS, quiescence_bishop_moves);
     quiescence_impl_next_direction_move!(MONARCH_DIRECTIONS, quiescence_queen_moves);
+
+    impl_next_move_mobility!(KNIGHT_MOVES, knight_mobility);
+
+    impl_next_direction_move_mobility!(ROOK_DIRECTIONS, rook_mobility);
+    impl_next_direction_move_mobility!(BISHOP_DIRECTIONS, bishop_mobility);
+    impl_next_direction_move_mobility!(MONARCH_DIRECTIONS, queen_mobility);
 }
