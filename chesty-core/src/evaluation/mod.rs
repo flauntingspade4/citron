@@ -1,3 +1,7 @@
+mod early_game;
+mod end_game;
+mod mid_game;
+
 #[cfg(feature = "debug")]
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -12,15 +16,13 @@ impl Board {
         #[cfg(feature = "debug")]
         POSITIONS_CONSIDERED.fetch_add(1, Ordering::SeqCst);
 
-        let heatmap_eval = if self.turn <= 30 {
-            self.positions_squares()
-                .map(|(position, piece)| piece.positional_value(position))
-                .sum()
+        if self.turn <= 30 {
+            self.early_game_evaluation()
+        } else if self.turn <= 50 {
+            self.middle_game_evaluation()
         } else {
-            0
-        };
-
-        heatmap_eval + self.material
+            self.end_game_evaluation()
+        }
     }
     pub fn calculate_material(&mut self) {
         self.material = self.pieces().map(Piece::value).sum();
