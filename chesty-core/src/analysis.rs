@@ -274,10 +274,9 @@ impl Board {
 
                     if score > alpha.load(Ordering::SeqCst) {
                         if score >= beta {
-                            /*if self[to].value() == 0 {
-                                let mut table = killer_table.entry(ply).or_default();
-                                table.add_white_move(from, to);
-                            }*/
+                            if self[to].value() == 0 {
+                                killer_table[ply as usize].add_move(from, to);
+                            }
 
                             return Err(beta);
                         }
@@ -407,10 +406,9 @@ impl Board {
 
                     if score < beta.load(Ordering::SeqCst) {
                         if score <= alpha {
-                            /*if self[to].value() == 0 {
-                                let mut table = killer_table.entry(ply).or_default();
-                                table.add_black_move(from, to);
-                            }*/
+                            if self[to].value() == 0 {
+                                killer_table[ply as usize].add_move(from, to);
+                            }
 
                             return Err(alpha);
                         }

@@ -28,16 +28,11 @@ pub fn move_ordering(
             possible_move.2 += ((take_value as u16).saturating_mul(TOOK_PIECE_MULTIPLIER))
                 - ((board[possible_move.0].piece_value() as u16)
                     .saturating_mul(TAKING_PIECE_MULTIPLIER));
-        } /*else if let Some(table) = killer_table.get(&ply) {
-              possible_move.2 += match board.to_play() {
-                  crate::PlayableTeam::White => {
-                      table.contains_white_move(possible_move.0, possible_move.1) as u16 * 10
-                  }
-                  crate::PlayableTeam::Black => {
-                      table.contains_black_move(possible_move.0, possible_move.1) as u16 * 10
-                  }
-              }
-          }*/
+        } else {
+            possible_move.2 +=
+                killer_table[ply as usize].contains_move(possible_move.0, possible_move.1) as u16
+                    * 25
+        }
     }
 
     moves.sort_unstable_by(|a, b| b.2.cmp(&a.2));
