@@ -120,7 +120,7 @@ macro_rules! quiescence_impl_next_direction_move {
 
 macro_rules! impl_next_move_mobility {
     ($move_list:ident, $method_name:ident) => {
-        fn $method_name(self, position: Position, board: &Board, moves: &mut u16) {
+        fn $method_name(self, position: Position, board: &Board, moves: &mut i16) {
             for (x, y) in $move_list {
                 if let Some(move_to) = position.checked_add_to(x, y) {
                     if board[move_to].team() == !(self.team()) {
@@ -134,7 +134,7 @@ macro_rules! impl_next_move_mobility {
 
 macro_rules! impl_next_direction_move_mobility {
     ($move_list:ident, $method_name:ident) => {
-        fn $method_name(self, position: Position, board: &Board, moves: &mut u16) {
+        fn $method_name(self, position: Position, board: &Board, moves: &mut i16) {
             for (x, y) in $move_list {
                 let mut move_to = position;
 
@@ -228,16 +228,18 @@ impl Piece {
     }
     /// Adds the number of moves avaliable to `moves`. King and pawn moves are
     /// ignored
-    pub fn mobility(&self, position: Position, board: &Board, moves: &mut u16) {
+    pub fn mobility(&self, position: Position, board: &Board) -> i16 {
+        let mut moves = 0;
+
         match self.kind() {
-            PieceKind::None => {}
-            PieceKind::Pawn => {}
-            PieceKind::Rook => self.rook_mobility(position, board, moves),
-            PieceKind::Knight => self.knight_mobility(position, board, moves),
-            PieceKind::Bishop => self.bishop_mobility(position, board, moves),
-            PieceKind::Queen => self.queen_mobility(position, board, moves),
-            PieceKind::King => {}
+            PieceKind::None | PieceKind::Pawn | PieceKind::King => return 0,
+            PieceKind::Rook => self.rook_mobility(position, board, &mut moves),
+            PieceKind::Knight => self.knight_mobility(position, board, &mut moves),
+            PieceKind::Bishop => self.bishop_mobility(position, board, &mut moves),
+            PieceKind::Queen => self.queen_mobility(position, board, &mut moves),
         }
+
+        moves
     }
 
     fn pawn_moves(
