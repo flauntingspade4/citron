@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicI16, AtomicU16, Ordering};
 use crate::{
     killer::KillerMoves,
     move_ordering::move_ordering,
-    piece::{KING_VALUE, PAWN_VALUE},
+    piece::KING_VALUE,
     position::{position_to_u16, u16_to_position},
     transposition_table::{hash, TranspositionEntry, TranspositionTable},
     Board, PlayableTeam, Team,
@@ -13,7 +13,7 @@ use dashmap::mapref::entry::Entry;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 pub const BRANCHING_FACTOR: usize = 35;
-const ASPIRATION_WINDOW: i16 = PAWN_VALUE >> 2;
+const ASPIRATION_WINDOW: i16 = 3;
 
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
