@@ -10,6 +10,6 @@ impl Board {
                 } else {
                     moves + mobility
                 }
-            }) >> 3)
+            }) >> 1)
     }
 }

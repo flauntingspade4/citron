@@ -18,7 +18,7 @@ impl Board {
 
         if self.turn <= 30 {
             self.early_game_evaluation()
-        } else if self.turn <= 50 {
+        } else if self.turn <= 70 {
             self.middle_game_evaluation()
         } else {
             self.end_game_evaluation()
