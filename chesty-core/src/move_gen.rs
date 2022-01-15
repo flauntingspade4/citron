@@ -190,7 +190,6 @@ impl Board {
 impl Piece {
     /// Appends all the legal moves of the piece at
     /// `position` on the board to `moves`
-
     pub fn legal_moves(
         &self,
         position: Position,

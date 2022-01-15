@@ -49,82 +49,36 @@ impl Board {
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
+        let tables = (&transposition_table, killer_table.as_slice());
+
         match self.to_play {
             PlayableTeam::White => {
                 for i in 0..depth {
-                    let eval = self.evaluate_private_white(
-                        i,
-                        0,
-                        alpha,
-                        beta,
-                        &transposition_table,
-                        &killer_table,
-                        true,
-                    );
+                    let eval = self.evaluate_private_white(i, 0, alpha, beta, tables, true);
                     if eval <= alpha || eval >= beta {
                         beta = i16::MAX;
                         alpha = -beta;
-                        self.evaluate_private_white(
-                            i,
-                            0,
-                            alpha,
-                            beta,
-                            &transposition_table,
-                            &killer_table,
-                            true,
-                        );
+                        self.evaluate_private_white(i, 0, alpha, beta, tables, true);
                     } else {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
                     }
                 }
-                self.evaluate_private_white(
-                    depth,
-                    0,
-                    alpha,
-                    beta,
-                    &transposition_table,
-                    &killer_table,
-                    true,
-                );
+                self.evaluate_private_white(depth, 0, alpha, beta, tables, true);
             }
             PlayableTeam::Black => {
                 for i in 0..depth {
-                    let eval = self.evaluate_private_black(
-                        i,
-                        0,
-                        alpha,
-                        beta,
-                        &transposition_table,
-                        &killer_table,
-                        true,
-                    );
+                    let eval = self.evaluate_private_black(i, 0, alpha, beta, tables, true);
                     if eval <= alpha || eval >= beta {
                         beta = i16::MAX;
                         alpha = -beta;
-                        self.evaluate_private_black(
-                            i,
-                            0,
-                            alpha,
-                            beta,
-                            &transposition_table,
-                            &killer_table,
-                            true,
-                        );
+                        self.evaluate_private_black(i, 0, alpha, beta, tables, true);
                     } else {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
                     }
                 }
-                self.evaluate_private_black(
-                    depth,
-                    0,
-                    alpha,
-                    beta,
-                    &transposition_table,
-                    &killer_table,
-                    true,
-                );
+                self.evaluate_private_black(depth, 0, alpha, beta, tables, true);
             }
         }
 
@@ -143,28 +97,14 @@ impl Board {
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
+        let tables = (&transposition_table, killer_table.as_slice());
+
         match self.to_play {
             PlayableTeam::White => {
-                self.evaluate_private_white(
-                    depth,
-                    0,
-                    alpha,
-                    beta,
-                    &transposition_table,
-                    &killer_table,
-                    true,
-                );
+                self.evaluate_private_white(depth, 0, alpha, beta, tables, true);
             }
             PlayableTeam::Black => {
-                self.evaluate_private_black(
-                    depth,
-                    0,
-                    alpha,
-                    beta,
-                    &transposition_table,
-                    &killer_table,
-                    true,
-                );
+                self.evaluate_private_black(depth, 0, alpha, beta, tables, true);
             }
         }
 
@@ -176,8 +116,7 @@ impl Board {
         ply: u8,
         alpha: i16,
         beta: i16,
-        transposition_table: &TranspositionTable,
-        killer_table: &[KillerMoves],
+        (transposition_table, killer_table): (&TranspositionTable, &[KillerMoves]),
         pv_child: bool,
     ) -> i16 {
         if depth == 0 {
@@ -243,8 +182,7 @@ impl Board {
                             ply + 1,
                             alpha.load(Ordering::SeqCst),
                             beta,
-                            transposition_table,
-                            killer_table,
+                            (transposition_table, killer_table),
                             false,
                         );
                         if eval > alpha.load(Ordering::SeqCst) {
@@ -253,8 +191,7 @@ impl Board {
                                 ply + 1,
                                 alpha.load(Ordering::SeqCst),
                                 beta,
-                                transposition_table,
-                                killer_table,
+                                (transposition_table, killer_table),
                                 false,
                             )
                         } else {
@@ -266,8 +203,7 @@ impl Board {
                             ply + 1,
                             alpha.load(Ordering::SeqCst),
                             beta,
-                            transposition_table,
-                            killer_table,
+                            (transposition_table, killer_table),
                             best_move.load(Ordering::SeqCst) != 0,
                         )
                     };
@@ -316,8 +252,7 @@ impl Board {
         ply: u8,
         alpha: i16,
         beta: i16,
-        transposition_table: &TranspositionTable,
-        killer_table: &[KillerMoves],
+        (transposition_table, killer_table): (&TranspositionTable, &[KillerMoves]),
         pv_child: bool,
     ) -> i16 {
         if depth == 0 {
@@ -375,8 +310,7 @@ impl Board {
                             ply + 1,
                             alpha,
                             beta.load(Ordering::SeqCst),
-                            transposition_table,
-                            killer_table,
+                            (transposition_table, killer_table),
                             false,
                         );
                         if eval < beta.load(Ordering::SeqCst) {
@@ -385,8 +319,7 @@ impl Board {
                                 ply + 1,
                                 alpha,
                                 beta.load(Ordering::SeqCst),
-                                transposition_table,
-                                killer_table,
+                                (transposition_table, killer_table),
                                 false,
                             )
                         } else {
@@ -398,8 +331,7 @@ impl Board {
                             ply + 1,
                             alpha,
                             beta.load(Ordering::SeqCst),
-                            transposition_table,
-                            killer_table,
+                            (transposition_table, killer_table),
                             best_move.load(Ordering::SeqCst) != 0,
                         )
                     };
@@ -446,8 +378,7 @@ impl Board {
 
 #[test]
 fn good_test() {
-    let board =
-        Board::from_fen("r1b2b1r/pp3k1p/4pqp1/1Qp5/2Pp4/8/PP1PKPPP/R1B2B1R b - - 1 15").unwrap();
+    let board = Board::from_fen("5r2/p4p1p/2p2p2/2pn3P/5PPk/P2bP1R1/1r1P1K2/R7 w - - 0 1").unwrap();
     // Board::from_fen("r1bqkb1r/pp5p/4pPp1/1Npp4/3n4/3Q4/PPPP1PPP/R1B1KB1R b KQkq - 1 11").unwrap();
 
     println!("{}", board);
@@ -469,7 +400,7 @@ fn good_test() {
         best.value().evaluation as f64 / 10.,
     );
 
-    explore_line(board, &table);
+    // explore_line(board, &table);
 
     #[cfg(feature = "debug")]
     println!(
@@ -519,7 +450,7 @@ fn fight_self() {
     let mut fast_won = 0;
     let mut slow_won = 0;
 
-    let depth = 5;
+    let depth = 4;
 
     for _ in 0..1 {
         let mut board = Board::new();
@@ -528,7 +459,7 @@ fn fight_self() {
 
         match fast_to_play {
             PlayableTeam::White => {
-                for i in 0..40 {
+                for i in 0..80 {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
