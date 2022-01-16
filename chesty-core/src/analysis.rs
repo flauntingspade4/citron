@@ -13,7 +13,7 @@ use dashmap::mapref::entry::Entry;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 pub const BRANCHING_FACTOR: usize = 35;
-const ASPIRATION_WINDOW: i16 = 3;
+const ASPIRATION_WINDOW: i16 = 2;
 
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
@@ -235,7 +235,7 @@ impl Board {
 
         match transposition_table.entry(hash) {
             Entry::Occupied(mut entry) => {
-                if entry.get().depth < depth {
+                if entry.get().depth <= depth {
                     entry.insert(transposition_entry);
                 }
             }
@@ -363,7 +363,7 @@ impl Board {
 
         match transposition_table.entry(hash) {
             Entry::Occupied(mut entry) => {
-                if entry.get().depth < depth {
+                if entry.get().depth <= depth {
                     entry.insert(transposition_entry);
                 }
             }
