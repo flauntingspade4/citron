@@ -51,9 +51,15 @@ impl Board {
 
         let tables = (&transposition_table, killer_table.as_slice());
 
+        #[cfg(feature = "debug")]
+        let (mut time_taken, mut start) = (
+            Vec::with_capacity(depth as usize),
+            std::time::Instant::now(),
+        );
+
         match self.to_play {
             PlayableTeam::White => {
-                for i in 0..depth {
+                for i in 0..=depth {
                     let eval = self.evaluate_private_white(i, 0, alpha, beta, tables, true);
                     if eval <= alpha || eval >= beta {
                         beta = i16::MAX;
@@ -63,11 +69,16 @@ impl Board {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
                     }
+
+                    #[cfg(feature = "debug")]
+                    {
+                        time_taken.push(start.elapsed().as_nanos());
+                        start = std::time::Instant::now();
+                    }
                 }
-                self.evaluate_private_white(depth, 0, alpha, beta, tables, true);
             }
             PlayableTeam::Black => {
-                for i in 0..depth {
+                for i in 0..=depth {
                     let eval = self.evaluate_private_black(i, 0, alpha, beta, tables, true);
                     if eval <= alpha || eval >= beta {
                         beta = i16::MAX;
@@ -77,10 +88,18 @@ impl Board {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
                     }
+
+                    #[cfg(feature = "debug")]
+                    {
+                        time_taken.push(start.elapsed().as_nanos());
+                        start = std::time::Instant::now();
+                    }
                 }
-                self.evaluate_private_black(depth, 0, alpha, beta, tables, true);
             }
         }
+
+        #[cfg(feature = "debug")]
+        println!("{:?}", time_taken);
 
         transposition_table
     }
