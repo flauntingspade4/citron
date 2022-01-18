@@ -1,4 +1,4 @@
-use chesty_core::PlayableTeam;
+use crate::PlayableTeam;
 
 use tch::{nn::Linear, IndexOp};
 
