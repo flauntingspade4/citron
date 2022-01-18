@@ -42,9 +42,9 @@ impl Board {
 /// possible
 fn trade_bonus(material: i16, absolute_material: i16) -> i16 {
     if material > 0 {
-        (DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 5
+        (DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7
     } else if material < 0 {
-        -((DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 5)
+        -((DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7)
     } else {
         0
     }
