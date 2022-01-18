@@ -1,6 +1,6 @@
 use core::fmt::{Display, Formatter, Result};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Position(u8);
 
 impl Position {
