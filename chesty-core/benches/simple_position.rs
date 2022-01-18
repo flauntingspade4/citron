@@ -2,6 +2,8 @@ use chesty_core::{explore_line, hash, Board, Position};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("benches");
+
     let board =
         Board::from_fen("r2q1rk1/1p3p1p/1b4p1/pPp2b2/3pn1P1/P2Q4/B1P1NP1P/R1B2RK1 b - - 0 30")
             .unwrap();
@@ -10,7 +12,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let expected_best_move = (Position::new(4, 3), Position::new(5, 1));
 
-    c.bench_function("depth 3", |b| {
+    group.bench_function("depth 3", |b| {
         b.iter(|| {
             let table = board.iterative_deepening(3);
 
@@ -21,7 +23,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("depth 4", |b| {
+    group.sample_size(10);
+
+    group.bench_function("depth 4", |b| {
         b.iter(|| {
             let table = board.iterative_deepening(4);
 
@@ -40,6 +44,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             }
         })
     });
+
+    group.finish();
 }
 
 criterion_group!(benches, criterion_benchmark);
