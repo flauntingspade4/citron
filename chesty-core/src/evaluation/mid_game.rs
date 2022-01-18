@@ -10,5 +10,7 @@ impl Board {
                 moves + mobility
             }
         }) >> 1)
+            - self[self.king_positions.0].virtual_mobility(self.king_positions.0, self) * 15
+            + self[self.king_positions.1].virtual_mobility(self.king_positions.1, self) * 15
     }
 }

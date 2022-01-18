@@ -240,6 +240,13 @@ impl Piece {
 
         moves
     }
+    pub fn virtual_mobility(&self, position: Position, board: &Board) -> i16 {
+        let mut moves = 0;
+
+        self.queen_mobility(position, board, &mut moves);
+
+        moves
+    }
 
     fn pawn_moves(
         self,
