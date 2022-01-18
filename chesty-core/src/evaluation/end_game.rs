@@ -1,7 +1,8 @@
 use crate::Board;
 
 impl Board {
-    pub fn end_game_evaluation(&self) -> i16 {
+    #[must_use]
+    pub const fn end_game_evaluation(&self) -> i16 {
         0
     }
 }

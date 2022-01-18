@@ -1,3 +1,5 @@
+use core::cmp::Ordering;
+
 mod early_game;
 mod end_game;
 mod mid_game;
@@ -13,7 +15,7 @@ use crate::{
 #[cfg(feature = "debug")]
 pub static POSITIONS_CONSIDERED: AtomicUsize = AtomicUsize::new(0);
 
-const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE;
+const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 125;
 
 impl Board {
     #[must_use]
@@ -33,7 +35,8 @@ impl Board {
     }
     pub fn calculate_material(&mut self) {
         self.material = self.pieces().map(|p| p.value()).sum();
-        self.material = self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;
+        self.absolute_material =
+            self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;
     }
 }
 
@@ -41,11 +44,9 @@ impl Board {
 /// remaining amount of material on the board as low as
 /// possible
 fn trade_bonus(material: i16, absolute_material: i16) -> i16 {
-    if material > 0 {
-        (DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7
-    } else if material < 0 {
-        -((DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7)
-    } else {
-        0
+    match material.cmp(&0) {
+        Ordering::Less => -((DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7),
+        Ordering::Equal => 0,
+        Ordering::Greater => (DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - absolute_material) >> 7,
     }
 }
