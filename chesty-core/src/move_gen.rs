@@ -227,11 +227,12 @@ impl Piece {
     }
     /// Adds the number of moves avaliable to `moves`. King and pawn moves are
     /// ignored
+    #[must_use]
     pub fn mobility(&self, position: Position, board: &Board) -> i16 {
         let mut moves = 0;
 
         match self.kind() {
-            PieceKind::None | PieceKind::Pawn | PieceKind::King => return 0,
+            PieceKind::None | PieceKind::Pawn | PieceKind::King => {}
             PieceKind::Rook => self.rook_mobility(position, board, &mut moves),
             PieceKind::Knight => self.knight_mobility(position, board, &mut moves),
             PieceKind::Bishop => self.bishop_mobility(position, board, &mut moves),
@@ -240,10 +241,26 @@ impl Piece {
 
         moves
     }
+
+    #[must_use]
     pub fn virtual_mobility(&self, position: Position, board: &Board) -> i16 {
         let mut moves = 0;
 
-        self.queen_mobility(position, board, &mut moves);
+        let attacking_team = !self.team();
+
+        for (x, y) in MONARCH_DIRECTIONS {
+            let mut move_to = position;
+
+            while let Some(possible_move) = move_to.checked_add_to(x, y) {
+                move_to = possible_move;
+
+                match board[possible_move].team().compare(&attacking_team) {
+                    TeamComparison::Same => break,
+                    TeamComparison::Different => moves += 1,
+                    TeamComparison::None => moves += 1,
+                }
+            }
+        }
 
         moves
     }
