@@ -89,7 +89,7 @@ impl Piece {
     /// Returns positive [`Piece::piece_value`] if
     /// the piece is white, and negative if black
     #[must_use]
-    pub fn value(&self) -> i16 {
+    pub fn value(self) -> i16 {
         let value = self.piece_value();
         if self.team() == Team::White {
             value

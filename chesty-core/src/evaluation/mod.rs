@@ -5,7 +5,7 @@ mod mid_game;
 #[cfg(feature = "debug")]
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::{piece::Piece, Board};
+use crate::{piece::KING_VALUE, Board};
 
 #[cfg(feature = "debug")]
 pub static POSITIONS_CONSIDERED: AtomicUsize = AtomicUsize::new(0);
@@ -16,7 +16,7 @@ impl Board {
         #[cfg(feature = "debug")]
         POSITIONS_CONSIDERED.fetch_add(1, Ordering::SeqCst);
 
-        if self.turn <= 30 {
+        self.material + if self.turn <= 30 {
             self.early_game_evaluation()
         } else if self.turn <= 70 {
             self.middle_game_evaluation()
@@ -25,6 +25,7 @@ impl Board {
         }
     }
     pub fn calculate_material(&mut self) {
-        self.material = self.pieces().map(Piece::value).sum();
+        self.material = self.pieces().map(|p| p.value()).sum();
+        self.material = self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;
     }
 }

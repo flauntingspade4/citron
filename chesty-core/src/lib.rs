@@ -31,6 +31,7 @@ pub struct Board {
     to_play: PlayableTeam,
     turn: u16,
     material: i16,
+    absolute_material: i16,
 }
 
 impl Board {
@@ -39,6 +40,7 @@ impl Board {
         to_play: PlayableTeam::White,
         turn: 0,
         material: 0,
+        absolute_material: 0,
     };
     /// Creates a new board, with a default configuration
     #[must_use]
