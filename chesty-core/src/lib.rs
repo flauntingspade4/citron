@@ -32,6 +32,7 @@ pub struct Board {
     turn: u16,
     material: i16,
     absolute_material: i16,
+    king_positions: (Position, Position),
 }
 
 impl Board {
@@ -41,6 +42,7 @@ impl Board {
         turn: 0,
         material: 0,
         absolute_material: 0,
+        king_positions: (Position::new(0, 0), Position::new(0, 0)),
     };
     /// Creates a new board, with a default configuration
     #[must_use]
@@ -86,12 +88,14 @@ impl Board {
                     let castling_rook = core::mem::take(&mut board[to]);
 
                     board[Position::new(2, to.y())] = piece;
+                    board.moved_king(Position::new(2, to.y()));
                     board[Position::new(3, to.y())] = castling_rook;
                     castled = true;
                 } else if to.x() == 7 {
                     let castling_rook = core::mem::take(&mut board[to]);
 
                     board[Position::new(6, to.y())] = piece;
+                    board.moved_king(Position::new(6, to.y()));
                     board[Position::new(5, to.y())] = castling_rook;
                     castled = true;
                 }
@@ -101,6 +105,9 @@ impl Board {
         if !castled {
             board.material -= board[to].value();
             board[to] = piece;
+            if board[to].kind() == PieceKind::King {
+                board.moved_king(to);
+            }
         };
 
         board.to_play = !board.to_play;
@@ -142,8 +149,14 @@ impl Board {
                 'B' => board[pos] = Piece::new(PieceKind::Bishop, White),
                 'q' => board[pos] = Piece::new(PieceKind::Queen, Black),
                 'Q' => board[pos] = Piece::new(PieceKind::Queen, White),
-                'k' => board[pos] = Piece::new(PieceKind::King, Black),
-                'K' => board[pos] = Piece::new(PieceKind::King, White),
+                'k' => {
+                    board.king_positions.1 = pos;
+                    board[pos] = Piece::new(PieceKind::King, Black);
+                }
+                'K' => {
+                    board.king_positions.0 = pos;
+                    board[pos] = Piece::new(PieceKind::King, White);
+                }
                 '/' => {
                     if x == 8 {
                         x = 0;
@@ -185,6 +198,12 @@ impl Board {
         board.calculate_material();
 
         Some(board)
+    }
+    fn moved_king(&mut self, to: Position) {
+        match self.to_play {
+            PlayableTeam::White => self.king_positions.0 = to,
+            PlayableTeam::Black => self.king_positions.1 = to,
+        }
     }
 }
 
