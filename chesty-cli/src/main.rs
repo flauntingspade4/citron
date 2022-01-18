@@ -95,7 +95,7 @@ fn main() {
                     "({}) ({}) {}",
                     from,
                     to,
-                    best.value().evaluation as f64 / 10.
+                    best.value().evaluation as f64 / 100.
                 );
 
                 board = board.make_move(from, to);

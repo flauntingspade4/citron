@@ -31,7 +31,7 @@ pub fn move_ordering(
         } else {
             possible_move.2 +=
                 killer_table[ply as usize].contains_move(possible_move.0, possible_move.1) as u16
-                    * 25
+                    * 250
         }
     }
 

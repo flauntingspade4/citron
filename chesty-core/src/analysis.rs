@@ -397,8 +397,7 @@ impl Board {
 
 #[test]
 fn good_test() {
-    let board = Board::from_fen("5r2/p4p1p/2p2p2/2pn3P/5PPk/P2bP1R1/1r1P1K2/R7 w - - 0 1").unwrap();
-    // Board::from_fen("r1bqkb1r/pp5p/4pPp1/1Npp4/3n4/3Q4/PPPP1PPP/R1B1KB1R b KQkq - 1 11").unwrap();
+    let board = Board::from_fen("3rk2r/1p4pp/p1p1bp2/2Bn4/B7/P4P2/3K3P/5R2 b k - 3 22").unwrap();
 
     println!("{}", board);
 
@@ -416,14 +415,12 @@ fn good_test() {
         elapsed,
         from,
         to,
-        best.value().evaluation as f64 / 10.,
+        best.value().evaluation as f64 / 100.,
     );
-
-    // explore_line(board, &table);
 
     #[cfg(feature = "debug")]
     println!(
-        "{}",
+        "{} nodes/s",
         crate::evaluation::POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize
     );
 }

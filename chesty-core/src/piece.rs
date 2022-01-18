@@ -2,10 +2,10 @@ use core::fmt::Display;
 
 use crate::{PlayableTeam, Team};
 
-pub const PAWN_VALUE: i16 = 10;
+pub const PAWN_VALUE: i16 = 100;
 const ROOK_VALUE: i16 = 5 * PAWN_VALUE;
 const KNIGHT_VALUE: i16 = 3 * PAWN_VALUE;
-const BISHOP_VALUE: i16 = 3 * PAWN_VALUE + 2;
+const BISHOP_VALUE: i16 = 3 * PAWN_VALUE + 25;
 pub const QUEEN_VALUE: i16 = 9 * PAWN_VALUE;
 pub const KING_VALUE: i16 = 50 * PAWN_VALUE;
 
