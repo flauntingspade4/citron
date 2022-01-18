@@ -1,6 +1,6 @@
 use std::lazy::SyncLazy;
 
-use crate::{piece::Piece, Board, PlayableTeam, Position};
+use crate::{analysis::Node, piece::Piece, Board, PlayableTeam, Position};
 
 use dashmap::DashMap;
 
@@ -18,7 +18,7 @@ static ZOBRIST_KEYS: SyncLazy<([[u64; 12]; 64], u64)> = SyncLazy::new(|| {
     (unsafe { core::mem::transmute(initial) }, rng.next_u64())
 });
 
-const fn piece_index(piece: Piece) -> usize {
+fn piece_index(piece: Piece) -> usize {
     match piece.inner() & 0b0001_1111 {
         0b0001_1001 => 0,
         0b0001_1010 => 1,
@@ -32,7 +32,7 @@ const fn piece_index(piece: Piece) -> usize {
         0b0000_1100 => 9,
         0b0000_1101 => 10,
         0b0000_1110 => 11,
-        _ => panic!("unrecognised piece"),
+        _ => panic!("unrecognised piece {}", piece.inner()),
     }
 }
 
@@ -53,12 +53,12 @@ pub fn hash(board: &Board) -> u64 {
 #[derive(Debug)]
 pub struct TranspositionEntry {
     pub depth: u8,
-    pub evaluation: i16,
+    pub evaluation: Node,
     pub best_move: (Position, Position),
 }
 
 impl TranspositionEntry {
-    pub const fn new(depth: u8, evaluation: i16, best_move: (Position, Position)) -> Self {
+    pub const fn new(depth: u8, evaluation: Node, best_move: (Position, Position)) -> Self {
         Self {
             depth,
             evaluation,

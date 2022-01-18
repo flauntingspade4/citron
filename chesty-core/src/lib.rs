@@ -115,6 +115,13 @@ impl Board {
 
         board
     }
+    pub fn make_null_move(&self) -> Self {
+        let mut board = self.clone();
+
+        board.to_play = !board.to_play;
+
+        board
+    }
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
         use PlayableTeam::{Black, White};

@@ -70,7 +70,7 @@ fn main() {
                     "Best move in position: ({}) ({}) {}",
                     from,
                     to,
-                    best.value().evaluation
+                    best.value().evaluation.into_inner() as f64 / 100.
                 );
             }
         }
@@ -95,7 +95,7 @@ fn main() {
                     "({}) ({}) {}",
                     from,
                     to,
-                    best.value().evaluation as f64 / 100.
+                    best.value().evaluation.into_inner() as f64 / 100.
                 );
 
                 board = board.make_move(from, to);
