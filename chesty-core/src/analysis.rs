@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicI16, AtomicU16, Ordering};
+use std::collections::hash_map::Entry;
 
 use crate::{
     killer::KillerMoves,
@@ -8,9 +8,6 @@ use crate::{
     transposition_table::{hash, TranspositionEntry, TranspositionTable},
     Board, PlayableTeam, Team,
 };
-
-use dashmap::mapref::entry::Entry;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 pub const BRANCHING_FACTOR: usize = 35;
 const ASPIRATION_WINDOW: i16 = 2;
@@ -33,12 +30,10 @@ impl Node {
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
         if let Some(best) = transposition_table.get(&hash(&starting_board)) {
-            let (from, to) = best.value().best_move;
+            let (from, to) = best.best_move;
             println!(
                 "Best move in position: ({}) ({}) {:?}",
-                from,
-                to,
-                best.value().evaluation
+                from, to, best.evaluation
             );
             starting_board = starting_board.make_move(from, to);
             println!("{}", starting_board);
@@ -60,11 +55,9 @@ impl Board {
         let mut beta = KING_VALUE;
         let mut alpha = -KING_VALUE;
 
-        let transposition_table = TranspositionTable::new();
+        let mut transposition_table = TranspositionTable::new();
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
-
-        let tables = (&transposition_table, killer_table.as_slice());
 
         #[cfg(feature = "debug")]
         let (mut time_taken, mut start) = (
@@ -75,11 +68,25 @@ impl Board {
         match self.to_play {
             PlayableTeam::White => {
                 for i in 0..=depth {
-                    let eval = self.evaluate_private_white(i, 0, alpha, beta, tables, false);
+                    let eval = self.evaluate_private_white(
+                        i,
+                        0,
+                        alpha,
+                        beta,
+                        (&mut transposition_table, killer_table.as_mut_slice()),
+                        false,
+                    );
                     if eval <= alpha || eval >= beta {
                         beta = KING_VALUE;
                         alpha = -KING_VALUE;
-                        self.evaluate_private_white(i, 0, alpha, beta, tables, false);
+                        self.evaluate_private_white(
+                            i,
+                            0,
+                            alpha,
+                            beta,
+                            (&mut transposition_table, killer_table.as_mut_slice()),
+                            false,
+                        );
                     } else {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
@@ -94,11 +101,25 @@ impl Board {
             }
             PlayableTeam::Black => {
                 for i in 0..=depth {
-                    let eval = self.evaluate_private_black(i, 0, alpha, beta, tables, false);
+                    let eval = self.evaluate_private_black(
+                        i,
+                        0,
+                        alpha,
+                        beta,
+                        (&mut transposition_table, killer_table.as_mut_slice()),
+                        false,
+                    );
                     if eval <= alpha || eval >= beta {
                         beta = KING_VALUE;
                         alpha = -KING_VALUE;
-                        self.evaluate_private_black(i, 0, alpha, beta, tables, false);
+                        self.evaluate_private_black(
+                            i,
+                            0,
+                            alpha,
+                            beta,
+                            (&mut transposition_table, killer_table.as_mut_slice()),
+                            false,
+                        );
                     } else {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
@@ -127,11 +148,11 @@ impl Board {
         let beta = KING_VALUE;
         let alpha = -KING_VALUE;
 
-        let transposition_table = TranspositionTable::new();
+        let mut transposition_table = TranspositionTable::new();
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
-        let tables = (&transposition_table, killer_table.as_slice());
+        let tables = (&mut transposition_table, killer_table.as_mut_slice());
 
         match self.to_play {
             PlayableTeam::White => {
@@ -148,9 +169,9 @@ impl Board {
         &self,
         depth: u8,
         ply: u8,
-        alpha: i16,
+        mut alpha: i16,
         beta: i16,
-        (transposition_table, killer_table): (&TranspositionTable, &[KillerMoves]),
+        (transposition_table, killer_table): (&mut TranspositionTable, &mut [KillerMoves]),
         previous_null: bool,
     ) -> i16 {
         if depth == 0 {
@@ -160,7 +181,7 @@ impl Board {
         let hash = hash(self);
 
         if let Some(t) = transposition_table.get(&hash) {
-            if t.value().depth > depth {
+            if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
                 }
@@ -186,9 +207,8 @@ impl Board {
         }
 
         // 0 to represent two empty `Position`s
-        let best_move = AtomicU16::new(0);
-        let best_evaluation = AtomicI16::new(-KING_VALUE);
-        let alpha = AtomicI16::new(alpha);
+        let mut best_move = 0;
+        let mut best_evaluation = -KING_VALUE;
 
         let mut moves = Vec::with_capacity(BRANCHING_FACTOR);
 
@@ -210,7 +230,7 @@ impl Board {
 
         if let Err(beta_cutoff) =
             moves
-                .into_par_iter()
+                .into_iter()
                 .enumerate()
                 .try_for_each(|(index, (from, to, _))| {
                     if self[to].piece_value() == KING_VALUE {
@@ -221,27 +241,26 @@ impl Board {
 
                     /*let score = possible_board.evaluate_private_black(
                         depth - 1,
-                        alpha.load(Ordering::SeqCst),
+                        alpha,
                         beta,
                         transposition_table,
                         false,
                     );*/
 
-                    let score = if index > 3 && depth >= 2 && best_move.load(Ordering::SeqCst) == 0
-                    {
+                    let score = if index > 3 && depth >= 2 && best_move == 0 {
                         let eval = possible_board.evaluate_private_black(
                             depth.saturating_sub(2),
                             ply + 1,
-                            alpha.load(Ordering::SeqCst),
+                            alpha,
                             beta,
                             (transposition_table, killer_table),
                             false,
                         );
-                        if eval > alpha.load(Ordering::SeqCst) {
+                        if eval > alpha {
                             possible_board.evaluate_private_black(
                                 depth - 1,
                                 ply + 1,
-                                alpha.load(Ordering::SeqCst),
+                                alpha,
                                 beta,
                                 (transposition_table, killer_table),
                                 false,
@@ -253,14 +272,14 @@ impl Board {
                         possible_board.evaluate_private_black(
                             depth - 1,
                             ply + 1,
-                            alpha.load(Ordering::SeqCst),
+                            alpha,
                             beta,
                             (transposition_table, killer_table),
                             false,
                         )
                     };
 
-                    if score > alpha.load(Ordering::SeqCst) {
+                    if score > alpha {
                         if score >= beta {
                             if self[to].value() == 0 {
                                 killer_table[ply as usize].add_move(from, to);
@@ -268,9 +287,9 @@ impl Board {
 
                             return Err(beta);
                         }
-                        alpha.store(score, Ordering::SeqCst);
-                        best_evaluation.store(score, Ordering::SeqCst);
-                        best_move.store(position_to_u16((from, to)), Ordering::SeqCst);
+                        alpha = score;
+                        best_evaluation = score;
+                        best_move = position_to_u16((from, to));
                     }
 
                     Ok(())
@@ -279,13 +298,10 @@ impl Board {
             return beta_cutoff;
         };
 
-        let alpha = alpha.into_inner();
-        let best_move = best_move.into_inner();
-
         let transposition_entry = TranspositionEntry::new(
             depth,
             if best_move == 0 {
-                Node::AllNode(best_evaluation.into_inner())
+                Node::AllNode(best_evaluation)
             } else {
                 Node::PvNode(alpha)
             },
@@ -310,8 +326,8 @@ impl Board {
         depth: u8,
         ply: u8,
         alpha: i16,
-        beta: i16,
-        (transposition_table, killer_table): (&TranspositionTable, &[KillerMoves]),
+        mut beta: i16,
+        (transposition_table, killer_table): (&mut TranspositionTable, &mut [KillerMoves]),
         previous_null: bool,
     ) -> i16 {
         if depth == 0 {
@@ -321,7 +337,7 @@ impl Board {
         let hash = hash(self);
 
         if let Some(t) = transposition_table.get(&hash) {
-            if t.value().depth > depth {
+            if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
                 }
@@ -347,9 +363,8 @@ impl Board {
         }
 
         // 0 to represent two empty `Position`s
-        let best_move = AtomicU16::new(0);
-        let best_evaluation = AtomicI16::new(KING_VALUE);
-        let beta = AtomicI16::new(beta);
+        let mut best_move = 0;
+        let mut best_evaluation = KING_VALUE;
 
         let mut moves = Vec::with_capacity(BRANCHING_FACTOR);
 
@@ -371,7 +386,7 @@ impl Board {
 
         if let Err(alpha_cutoff) =
             moves
-                .into_par_iter()
+                .into_iter()
                 .enumerate()
                 .try_for_each(|(index, (from, to, _))| {
                     if self[to].piece_value() == KING_VALUE {
@@ -380,22 +395,21 @@ impl Board {
 
                     let possible_board = self.make_move(from, to);
 
-                    let score = if index > 3 && depth >= 2 && best_move.load(Ordering::SeqCst) == 0
-                    {
+                    let score = if index > 3 && depth >= 2 && best_move == 0 {
                         let eval = possible_board.evaluate_private_white(
                             depth.saturating_sub(2),
                             ply + 1,
                             alpha,
-                            beta.load(Ordering::SeqCst),
+                            beta,
                             (transposition_table, killer_table),
                             false,
                         );
-                        if eval < beta.load(Ordering::SeqCst) {
+                        if eval < beta {
                             possible_board.evaluate_private_white(
                                 depth - 1,
                                 ply + 1,
                                 alpha,
-                                beta.load(Ordering::SeqCst),
+                                beta,
                                 (transposition_table, killer_table),
                                 false,
                             )
@@ -407,13 +421,13 @@ impl Board {
                             depth - 1,
                             ply + 1,
                             alpha,
-                            beta.load(Ordering::SeqCst),
+                            beta,
                             (transposition_table, killer_table),
                             false,
                         )
                     };
 
-                    if score < beta.load(Ordering::SeqCst) {
+                    if score < beta {
                         if score <= alpha {
                             if self[to].value() == 0 {
                                 killer_table[ply as usize].add_move(from, to);
@@ -421,9 +435,9 @@ impl Board {
 
                             return Err(alpha);
                         }
-                        beta.store(score, Ordering::SeqCst);
-                        best_evaluation.store(score, Ordering::SeqCst);
-                        best_move.store(position_to_u16((from, to)), Ordering::SeqCst);
+                        beta = score;
+                        best_evaluation = score;
+                        best_move = position_to_u16((from, to));
                     }
 
                     Ok(())
@@ -432,13 +446,10 @@ impl Board {
             return alpha_cutoff;
         }
 
-        let beta = beta.into_inner();
-        let best_move = best_move.into_inner();
-
         let transposition_entry = TranspositionEntry::new(
             depth,
             if best_move == 0 {
-                Node::AllNode(best_evaluation.into_inner())
+                Node::AllNode(best_evaluation)
             } else {
                 Node::PvNode(beta)
             },
@@ -473,7 +484,7 @@ fn good_test() {
     let elapsed = start.elapsed().as_millis();
 
     let best = table.get(&hash(&board)).unwrap();
-    let (from, to) = best.value().best_move;
+    let (from, to) = best.best_move;
 
     println!(
         "{}ms ({}) ({}) {}",
@@ -485,12 +496,12 @@ fn good_test() {
 
     let starting_board = board.make_move(from, to);
 
-    explore_line(starting_board, &table);
+    // explore_line(starting_board, &table);
 
     #[cfg(feature = "debug")]
     println!(
         "{} nodes/s",
-        crate::evaluation::POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize
+        crate::evaluation::POSITIONS_CONSIDERED * 1000 / elapsed as usize
     );
 }
 
@@ -508,7 +519,7 @@ fn horde() {
     let table = board.iterative_deepening(6);
 
     let best = table.get(&hash(&board)).unwrap();
-    let (from, to) = best.value().best_move;
+    let (from, to) = best.best_move;
 
     let elapsed = start.elapsed().as_millis();
 
@@ -523,7 +534,7 @@ fn horde() {
     #[cfg(feature = "debug")]
     println!(
         "{} nodes/s",
-        crate::evaluation::POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize
+        crate::evaluation::POSITIONS_CONSIDERED * 1000 / elapsed as usize
     );
 }
 
@@ -548,9 +559,9 @@ fn fight_self() {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.value().best_move;
+                    let (from, to) = best.best_move;
 
-                    if best.value().evaluation.into_inner() == -KING_VALUE {
+                    if best.evaluation.into_inner() == -KING_VALUE {
                         fast_won += 1;
                         break;
                     }
@@ -562,9 +573,9 @@ fn fight_self() {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.value().best_move;
+                    let (from, to) = best.best_move;
 
-                    if best.value().evaluation.into_inner() == KING_VALUE {
+                    if best.evaluation.into_inner() == KING_VALUE {
                         slow_won += 1;
                         break;
                     }
@@ -583,9 +594,9 @@ fn fight_self() {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.value().best_move;
+                    let (from, to) = best.best_move;
 
-                    if best.value().evaluation.into_inner() == -KING_VALUE {
+                    if best.evaluation.into_inner() == -KING_VALUE {
                         slow_won += 1;
                         break;
                     }
@@ -597,9 +608,9 @@ fn fight_self() {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.value().best_move;
+                    let (from, to) = best.best_move;
 
-                    if best.value().evaluation.into_inner() == KING_VALUE {
+                    if best.evaluation.into_inner() == KING_VALUE {
                         fast_won += 1;
                         break;
                     }

@@ -5,8 +5,6 @@ edition = "2021"
 
 [dependencies]
 rand = "*"
-rayon = "^1.5"
-dashmap = "^5.0"
 tch = { version = "^0.6", optional = true }
 
 [dev-dependencies]

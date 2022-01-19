@@ -1,12 +1,10 @@
-use std::lazy::SyncLazy;
+use std::{lazy::SyncLazy, collections::HashMap};
 
 use crate::{analysis::Node, piece::Piece, Board, PlayableTeam, Position};
 
-use dashmap::DashMap;
-
 use rand::{Fill, RngCore};
 
-pub type TranspositionTable = DashMap<u64, TranspositionEntry>;
+pub type TranspositionTable = HashMap<u64, TranspositionEntry>;
 
 static ZOBRIST_KEYS: SyncLazy<([[u64; 12]; 64], u64)> = SyncLazy::new(|| {
     let mut initial: [u64; 12 * 64] = [0; 12 * 64];

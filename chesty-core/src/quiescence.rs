@@ -7,8 +7,6 @@ use crate::{
     Board, Team,
 };
 
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
 const DELTA: i16 = 2 * PAWN_VALUE;
 
 impl Board {
@@ -37,7 +35,7 @@ impl Board {
 
         quiescence_move_ordering(self, &mut moves);
 
-        if let Err(beta_cutoff) = moves.into_par_iter().try_for_each(|(from, to, _)| {
+        if let Err(beta_cutoff) = moves.into_iter().try_for_each(|(from, to, _)| {
             if self[to].piece_value() == KING_VALUE {
                 return Err(KING_VALUE);
             }
@@ -89,7 +87,7 @@ impl Board {
 
         quiescence_move_ordering(self, &mut moves);
 
-        if let Err(alpha_cutoff) = moves.into_par_iter().try_for_each(|(from, to, _)| {
+        if let Err(alpha_cutoff) = moves.into_iter().try_for_each(|(from, to, _)| {
             if self[to].piece_value() == KING_VALUE {
                 return Err(-KING_VALUE);
             }

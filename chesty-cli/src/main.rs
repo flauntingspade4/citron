@@ -65,12 +65,12 @@ fn main() {
             } else {
                 let best = table.get(&hash(&board)).unwrap();
 
-                let (from, to) = best.value().best_move;
+                let (from, to) = best.best_move;
                 println!(
                     "Best move in position: ({}) ({}) {}",
                     from,
                     to,
-                    best.value().evaluation.into_inner() as f64 / 100.
+                    best.evaluation.into_inner() as f64 / 100.
                 );
             }
         }
@@ -90,12 +90,12 @@ fn main() {
                 let eval = board.iterative_deepening_ply(depth);
                 let hash = hash(&board);
                 let best = eval.get(&hash).unwrap();
-                let (from, to) = best.value().best_move;
+                let (from, to) = best.best_move;
                 println!(
                     "({}) ({}) {}",
                     from,
                     to,
-                    best.value().evaluation.into_inner() as f64 / 100.
+                    best.evaluation.into_inner() as f64 / 100.
                 );
 
                 board = board.make_move(from, to);

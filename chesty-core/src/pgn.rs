@@ -7,6 +7,7 @@ pub struct Pgn {
 }
 
 impl Pgn {
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             index: 1,
@@ -37,6 +38,7 @@ impl Pgn {
             }
         }
     }
+    #[must_use]
     pub fn finish(self) -> String {
         self.moves
     }
@@ -53,31 +55,37 @@ impl Move {
         let (from_x, _) = position_to_uci(self.from);
 
         if board[self.to].is_piece() {
-            if let Some(piece_identifier) = piece_to_uci(board[self.from].kind()) {
-                format!("{}{}x{}{}", piece_identifier, from_x, x, y)
-            } else {
-                format!("{}x{}{}", from_x, x, y)
-            }
+            let uci = match piece_to_uci(board[self.from].kind()) {
+                Ok(t) => t,
+                Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
+            };
+            uci.map_or_else(
+                || format!("{}x{}{}", from_x, x, y),
+                |piece_identifier| format!("{}{}x{}{}", piece_identifier, from_x, x, y),
+            )
         } else {
-            if let Some(piece_identifier) = piece_to_uci(board[self.from].kind()) {
-                format!("{}{}{}{}", piece_identifier, from_x, x, y)
-            } else {
-                format!("{}{}", x, y)
-            }
+            let uci = match piece_to_uci(board[self.from].kind()) {
+                Ok(t) => t,
+                Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
+            };
+            uci.map_or_else(
+                || format!("{}{}", x, y),
+                |piece_identifier| format!("{}{}{}{}", piece_identifier, from_x, x, y),
+            )
         }
     }
 }
 
-fn piece_to_uci(kind: PieceKind) -> Option<char> {
-    match kind {
-        PieceKind::None => panic!(),
+fn piece_to_uci(kind: PieceKind) -> Result<Option<char>, ()> {
+    Ok(match kind {
+        PieceKind::None => return Err(()),
         PieceKind::Pawn => None,
         PieceKind::Rook => Some('R'),
         PieceKind::Knight => Some('N'),
         PieceKind::Bishop => Some('B'),
         PieceKind::Queen => Some('Q'),
         PieceKind::King => Some('K'),
-    }
+    })
 }
 
 fn position_to_uci(position: Position) -> (char, char) {

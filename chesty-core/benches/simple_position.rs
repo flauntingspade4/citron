@@ -17,7 +17,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let table = board.iterative_deepening(3);
 
             let best = table.get(&hash).unwrap();
-            let best_move = best.value().best_move;
+            let best_move = best.best_move;
 
             assert_eq!(best_move, expected_best_move);
         })
@@ -30,7 +30,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let table = board.iterative_deepening(4);
 
             let best = table.get(&hash).unwrap();
-            let best_move = best.value().best_move;
+            let best_move = best.best_move;
 
             if best_move != expected_best_move {
                 // assert_eq!(best_move, expected_best_move);

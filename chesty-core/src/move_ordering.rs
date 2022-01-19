@@ -15,7 +15,7 @@ pub fn move_ordering(
 ) {
     if let Some(best) = transposition_table.get(&hash) {
         for possible_move in moves.iter_mut() {
-            if (possible_move.0, possible_move.1) == best.value().best_move {
+            if (possible_move.0, possible_move.1) == best.best_move {
                 possible_move.2 += PREVIOUS_BEST_BONUS;
                 break;
             }
