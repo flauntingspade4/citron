@@ -39,7 +39,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     "({}) ({}) {}",
                     best_move.0,
                     best_move.1,
-                    best.value().evaluation
+                    best.evaluation.into_inner()
                 )
             }
         })
