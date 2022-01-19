@@ -5,7 +5,7 @@ mod end_game;
 mod mid_game;
 
 #[cfg(feature = "debug")]
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::{
     piece::{KING_VALUE, PAWN_VALUE},
@@ -21,7 +21,7 @@ impl Board {
     #[must_use]
     pub fn static_evaluation(&self) -> i16 {
         #[cfg(feature = "debug")]
-        POSITIONS_CONSIDERED.fetch_add(1, Ordering::SeqCst);
+        POSITIONS_CONSIDERED.fetch_add(1, AtomicOrdering::SeqCst);
 
         self.material
             + trade_bonus(self.material, self.absolute_material)
