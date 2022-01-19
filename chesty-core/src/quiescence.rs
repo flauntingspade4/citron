@@ -40,9 +40,9 @@ impl Board {
                 return Err(KING_VALUE);
             }
 
-            // println!("{} {}", stand_pat + DELTA - self[to].piece_value(), alpha.load(Ordering::SeqCst));
-
-            if stand_pat + DELTA + self[to].piece_value() > alpha.load(Ordering::SeqCst) {
+            if self.in_endgame()
+                || stand_pat + DELTA + self[to].piece_value() > alpha.load(Ordering::SeqCst)
+            {
                 let possible_board = self.make_move(from, to);
 
                 let score = possible_board.quiesce_black(alpha.load(Ordering::SeqCst), beta);
@@ -92,7 +92,9 @@ impl Board {
                 return Err(-KING_VALUE);
             }
 
-            if stand_pat - DELTA - self[to].piece_value() < beta.load(Ordering::SeqCst) {
+            if self.in_endgame()
+                || stand_pat - DELTA - self[to].piece_value() < beta.load(Ordering::SeqCst)
+            {
                 let possible_board = self.make_move(from, to);
 
                 let score = possible_board.quiesce_white(alpha, beta.load(Ordering::SeqCst));

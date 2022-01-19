@@ -189,7 +189,7 @@ impl Board {
         }
 
         // Null move
-        if depth >= 3 && !previous_null {
+        if !self.in_endgame() && depth >= 3 && !previous_null {
             let board = self.make_null_move();
 
             let value = board.evaluate_private_black(
@@ -345,7 +345,7 @@ impl Board {
         }
 
         // Null move
-        if depth >= 3 && !previous_null {
+        if !self.in_endgame() && depth >= 3 && !previous_null {
             let board = self.make_null_move();
 
             let value = board.evaluate_private_white(
