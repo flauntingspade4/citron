@@ -1,11 +1,15 @@
 use core::sync::atomic::{AtomicI16, Ordering};
 
 use crate::{
-    analysis::BRANCHING_FACTOR, move_ordering::quiescence_move_ordering, piece::KING_VALUE, Board,
-    Team,
+    analysis::BRANCHING_FACTOR,
+    move_ordering::quiescence_move_ordering,
+    piece::{KING_VALUE, PAWN_VALUE},
+    Board, Team,
 };
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+
+const DELTA: i16 = 2 * PAWN_VALUE;
 
 impl Board {
     #[must_use]
@@ -37,15 +41,20 @@ impl Board {
             if self[to].piece_value() == KING_VALUE {
                 return Err(KING_VALUE);
             }
-            let possible_board = self.make_move(from, to);
 
-            let score = possible_board.quiesce_black(alpha.load(Ordering::SeqCst), beta);
+            // println!("{} {}", stand_pat + DELTA - self[to].piece_value(), alpha.load(Ordering::SeqCst));
 
-            if score > alpha.load(Ordering::SeqCst) {
-                if score >= beta {
-                    return Err(beta);
+            if stand_pat + DELTA + self[to].piece_value() > alpha.load(Ordering::SeqCst) {
+                let possible_board = self.make_move(from, to);
+
+                let score = possible_board.quiesce_black(alpha.load(Ordering::SeqCst), beta);
+
+                if score > alpha.load(Ordering::SeqCst) {
+                    if score >= beta {
+                        return Err(beta);
+                    }
+                    alpha.store(score, Ordering::SeqCst);
                 }
-                alpha.store(score, Ordering::SeqCst);
             }
 
             Ok(())
@@ -84,15 +93,18 @@ impl Board {
             if self[to].piece_value() == KING_VALUE {
                 return Err(-KING_VALUE);
             }
-            let possible_board = self.make_move(from, to);
 
-            let score = possible_board.quiesce_white(alpha, beta.load(Ordering::SeqCst));
+            if stand_pat - DELTA - self[to].piece_value() < beta.load(Ordering::SeqCst) {
+                let possible_board = self.make_move(from, to);
 
-            if score < beta.load(Ordering::SeqCst) {
-                if score <= alpha {
-                    return Err(alpha);
+                let score = possible_board.quiesce_white(alpha, beta.load(Ordering::SeqCst));
+
+                if score < beta.load(Ordering::SeqCst) {
+                    if score <= alpha {
+                        return Err(alpha);
+                    }
+                    beta.store(score, Ordering::SeqCst);
                 }
-                beta.store(score, Ordering::SeqCst);
             }
 
             Ok(())
