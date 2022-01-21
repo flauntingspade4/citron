@@ -19,10 +19,9 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn into_inner(self) -> i16 {
+    pub const fn into_inner(self) -> i16 {
         match self {
-            Node::PvNode(s) => s,
-            Node::AllNode(s) => s,
+            Self::PvNode(s) | Self::AllNode(s) => s,
         }
     }
 }
@@ -52,18 +51,12 @@ impl Board {
     }
     #[must_use]
     pub fn iterative_deepening_ply(&self, depth: u8) -> TranspositionTable {
-        let mut beta = KING_VALUE;
-        let mut alpha = -KING_VALUE;
+        let mut beta = KING_VALUE + 1;
+        let mut alpha = -KING_VALUE - 1;
 
         let mut transposition_table = TranspositionTable::new();
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
-
-        #[cfg(feature = "debug")]
-        let (mut time_taken, mut start) = (
-            Vec::with_capacity(depth as usize),
-            std::time::Instant::now(),
-        );
 
         match self.to_play {
             PlayableTeam::White => {
@@ -77,8 +70,8 @@ impl Board {
                         false,
                     );
                     if eval <= alpha || eval >= beta {
-                        beta = KING_VALUE;
-                        alpha = -KING_VALUE;
+                        beta = KING_VALUE + 1;
+                        alpha = -KING_VALUE - 1;
                         self.evaluate_private_white(
                             i,
                             0,
@@ -90,12 +83,6 @@ impl Board {
                     } else {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
-                    }
-
-                    #[cfg(feature = "debug")]
-                    {
-                        time_taken.push(start.elapsed().as_nanos());
-                        start = std::time::Instant::now();
                     }
                 }
             }
@@ -124,18 +111,9 @@ impl Board {
                         alpha = eval - ASPIRATION_WINDOW;
                         beta = eval + ASPIRATION_WINDOW;
                     }
-
-                    #[cfg(feature = "debug")]
-                    {
-                        time_taken.push(start.elapsed().as_nanos());
-                        start = std::time::Instant::now();
-                    }
                 }
             }
         }
-
-        #[cfg(feature = "debug")]
-        println!("{:?}", time_taken);
 
         transposition_table
     }
@@ -145,8 +123,8 @@ impl Board {
     }
     #[must_use]
     pub fn evaluate_ply(&self, depth: u8) -> TranspositionTable {
-        let beta = KING_VALUE;
-        let alpha = -KING_VALUE;
+        let beta = KING_VALUE + 1;
+        let alpha = -KING_VALUE - 1;
 
         let mut transposition_table = TranspositionTable::new();
         let mut killer_table = Vec::new();
@@ -238,14 +216,6 @@ impl Board {
                     }
 
                     let possible_board = self.make_move(from, to);
-
-                    /*let score = possible_board.evaluate_private_black(
-                        depth - 1,
-                        alpha,
-                        beta,
-                        transposition_table,
-                        false,
-                    );*/
 
                     let score = if index > 3 && depth >= 2 && best_move == 0 {
                         let eval = possible_board.evaluate_private_black(
@@ -501,7 +471,7 @@ fn good_test() {
     #[cfg(feature = "debug")]
     println!(
         "{} nodes/s",
-        crate::evaluation::POSITIONS_CONSIDERED * 1000 / elapsed as usize
+        POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize,
     );
 }
 
@@ -534,7 +504,7 @@ fn horde() {
     #[cfg(feature = "debug")]
     println!(
         "{} nodes/s",
-        crate::evaluation::POSITIONS_CONSIDERED * 1000 / elapsed as usize
+        POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize
     );
 }
 
@@ -570,7 +540,7 @@ fn fight_self() {
 
                     board = board.make_move(from, to);
 
-                    let table = board.iterative_deepening(depth);
+                    let table = board.iterative_deepening_ply(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
                     let (from, to) = best.best_move;
