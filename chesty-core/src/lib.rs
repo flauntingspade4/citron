@@ -212,7 +212,7 @@ impl Board {
             PlayableTeam::Black => self.king_positions.1 = to,
         }
     }
-    fn in_endgame(&self) -> bool {
+    const fn in_endgame(&self) -> bool {
         self.absolute_material <= 12
     }
 }

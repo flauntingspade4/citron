@@ -256,8 +256,7 @@ impl Piece {
 
                 match board[possible_move].team().compare(&attacking_team) {
                     TeamComparison::Same => break,
-                    TeamComparison::Different => moves += 1,
-                    TeamComparison::None => moves += 1,
+                    TeamComparison::Different | TeamComparison::None => moves += 1,
                 }
             }
         }
