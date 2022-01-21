@@ -54,20 +54,17 @@ impl Move {
         let (x, y) = position_to_uci(self.to);
         let (from_x, _) = position_to_uci(self.from);
 
+        let uci = match piece_to_uci(board[self.from].kind()) {
+            Ok(t) => t,
+            Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
+        };
+
         if board[self.to].is_piece() {
-            let uci = match piece_to_uci(board[self.from].kind()) {
-                Ok(t) => t,
-                Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
-            };
             uci.map_or_else(
                 || format!("{}x{}{}", from_x, x, y),
                 |piece_identifier| format!("{}{}x{}{}", piece_identifier, from_x, x, y),
             )
         } else {
-            let uci = match piece_to_uci(board[self.from].kind()) {
-                Ok(t) => t,
-                Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
-            };
             uci.map_or_else(
                 || format!("{}{}", x, y),
                 |piece_identifier| format!("{}{}{}{}", piece_identifier, from_x, x, y),
@@ -76,7 +73,7 @@ impl Move {
     }
 }
 
-fn piece_to_uci(kind: PieceKind) -> Result<Option<char>, ()> {
+const fn piece_to_uci(kind: PieceKind) -> Result<Option<char>, ()> {
     Ok(match kind {
         PieceKind::None => return Err(()),
         PieceKind::Pawn => None,
