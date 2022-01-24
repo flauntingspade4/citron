@@ -98,13 +98,13 @@ fn main() {
                     best.evaluation.into_inner() as f64 / 100.
                 );
 
-                board = board.make_move(from, to);
+                board = board.make_move(from, to).unwrap();
 
                 println!("{}", board);
 
                 let (from, to) = get_positions();
 
-                board = board.make_move(from, to);
+                board = board.make_move(from, to).unwrap();
 
                 println!("{}", board);
             }

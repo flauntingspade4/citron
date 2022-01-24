@@ -45,6 +45,26 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
+    group.bench_function("depth 5", |b| {
+        b.iter(|| {
+            let table = board.iterative_deepening(5);
+
+            let best = table.get(&hash).unwrap();
+            let best_move = best.best_move;
+
+            if best_move != expected_best_move {
+                // assert_eq!(best_move, expected_best_move);
+                explore_line(board.clone(), &table);
+                panic!(
+                    "({}) ({}) {}",
+                    best_move.0,
+                    best_move.1,
+                    best.evaluation.into_inner()
+                )
+            }
+        })
+    });
+
     group.finish();
 }
 
