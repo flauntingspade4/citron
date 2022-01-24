@@ -125,7 +125,7 @@ fn pgn_gen() {
 
     pgn.add_move(played_move, &board);
 
-    board = board.make_move(played_move.0, played_move.1);
+    board = board.make_move(played_move.0, played_move.1).unwrap();
 
     let played_move = (
         Position::from_uci("e7").unwrap(),

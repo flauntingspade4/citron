@@ -6,7 +6,7 @@ use core::{
     ops::{Index, IndexMut, Not},
 };
 
-mod analysis;
+pub mod analysis;
 mod evaluation;
 mod heatmap;
 mod killer;
@@ -63,57 +63,59 @@ impl Board {
         self.to_play
     }
     #[must_use]
-    pub fn make_move(&self, from: Position, to: Position) -> Self {
+    pub fn make_move(&self, from: Position, to: Position) -> Option<Self> {
         let mut board = self.clone();
 
         let mut piece = core::mem::replace(&mut board[from], Piece::EMPTY);
 
-        piece.make_move();
+        piece.is_piece().then(|| {
+            piece.make_move();
 
-        let mut castled = false;
-        // Pawn promotion
-        if piece.kind() == PieceKind::Pawn {
-            let y = to.y();
-            if y == 0 {
-                piece.promote();
-                board.material -= QUEEN_VALUE + PAWN_VALUE;
-            } else if y == 7 {
-                piece.promote();
-                board.material += QUEEN_VALUE - PAWN_VALUE;
-            }
-        } else {
-            // Castling
-            if piece.kind() == PieceKind::King && from.x() == 4 {
-                if to.x() == 0 {
-                    let castling_rook = core::mem::take(&mut board[to]);
+            let mut castled = false;
+            // Pawn promotion
+            if piece.kind() == PieceKind::Pawn {
+                let y = to.y();
+                if y == 0 {
+                    piece.promote();
+                    board.material -= QUEEN_VALUE + PAWN_VALUE;
+                } else if y == 7 {
+                    piece.promote();
+                    board.material += QUEEN_VALUE - PAWN_VALUE;
+                }
+            } else {
+                // Castling
+                if piece.kind() == PieceKind::King && from.x() == 4 {
+                    if to.x() == 0 {
+                        let castling_rook = core::mem::take(&mut board[to]);
 
-                    board[Position::new(2, to.y())] = piece;
-                    board.moved_king(Position::new(2, to.y()));
-                    board[Position::new(3, to.y())] = castling_rook;
-                    castled = true;
-                } else if to.x() == 7 {
-                    let castling_rook = core::mem::take(&mut board[to]);
+                        board[Position::new(2, to.y())] = piece;
+                        board.moved_king(Position::new(2, to.y()));
+                        board[Position::new(3, to.y())] = castling_rook;
+                        castled = true;
+                    } else if to.x() == 7 {
+                        let castling_rook = core::mem::take(&mut board[to]);
 
-                    board[Position::new(6, to.y())] = piece;
-                    board.moved_king(Position::new(6, to.y()));
-                    board[Position::new(5, to.y())] = castling_rook;
-                    castled = true;
+                        board[Position::new(6, to.y())] = piece;
+                        board.moved_king(Position::new(6, to.y()));
+                        board[Position::new(5, to.y())] = castling_rook;
+                        castled = true;
+                    }
                 }
             }
-        }
 
-        if !castled {
-            board.material -= board[to].value();
-            board[to] = piece;
-            if board[to].kind() == PieceKind::King {
-                board.moved_king(to);
-            }
-        };
+            if !castled {
+                board.material -= board[to].value();
+                board[to] = piece;
+                if board[to].kind() == PieceKind::King {
+                    board.moved_king(to);
+                }
+            };
 
-        board.to_play = !board.to_play;
-        board.turn += 1;
+            board.to_play = !board.to_play;
+            board.turn += 1;
 
-        board
+            board
+        })
     }
     pub fn make_null_move(&self) -> Self {
         let mut board = self.clone();
