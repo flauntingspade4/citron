@@ -61,6 +61,9 @@ impl Board {
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
+        #[cfg(feature = "debug")]
+        let bar = indicatif::ProgressBar::new(depth as u64);
+
         for i in 0..=depth {
             let eval = self.evaluate_private(
                 i,
@@ -86,7 +89,12 @@ impl Board {
                 alpha = eval - ASPIRATION_WINDOW;
                 beta = eval + ASPIRATION_WINDOW;
             }
+            #[cfg(feature = "debug")]
+            bar.inc(1);
         }
+
+        #[cfg(feature = "debug")]
+        bar.finish();
 
         transposition_table
     }
