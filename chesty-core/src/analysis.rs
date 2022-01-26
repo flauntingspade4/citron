@@ -19,6 +19,7 @@ const MULTICUT_C: usize = 2;
 pub enum Node {
     PvNode(i16),
     AllNode(i16),
+    CutNode(i16),
 }
 
 impl Node {
@@ -204,20 +205,31 @@ impl Board {
             }
         }
 
-        if let Err(beta_cutoff) =
+        if let Err((beta_cutoff, from, to)) =
             moves
                 .into_iter()
                 .enumerate()
                 .try_for_each(|(index, (from, to, _))| {
                     if self[to].piece_value() == KING_VALUE {
-                        return Err(KING_VALUE);
+                        // If the first move considered is a capture of a king
+                        if ply == 0 {
+                            transposition_table.insert(
+                                hash,
+                                TranspositionEntry::new(
+                                    depth,
+                                    Node::PvNode(self[to].value()),
+                                    (from, to),
+                                ),
+                            );
+                        }
+                        return Err((KING_VALUE, from, to));
                     }
 
                     let possible_board = self.make_move(from, to).unwrap();
 
-                    let score = if index > 3 && depth >= 2 && best_move == 0 {
+                    let score = if index > 3 && depth >= 3 && best_move == 0 {
                         let eval = -possible_board.evaluate_private(
-                            depth - 2,
+                            depth - 3,
                             ply + 1,
                             -beta,
                             -alpha,
@@ -275,7 +287,7 @@ impl Board {
                                 killer_table[ply as usize].add_move(from, to);
                             }
 
-                            return Err(beta);
+                            return Err((beta, from, to));
                         }
                         alpha = score;
                         best_evaluation = score;
@@ -286,6 +298,20 @@ impl Board {
                     Ok(())
                 })
         {
+            let transposition_entry =
+                TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), (from, to));
+
+            match transposition_table.entry(hash) {
+                Entry::Occupied(mut entry) => {
+                    if entry.get().depth <= depth {
+                        entry.insert(transposition_entry);
+                    }
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(transposition_entry);
+                }
+            }
+
             return beta_cutoff;
         };
 
