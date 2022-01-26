@@ -260,6 +260,35 @@ impl Debug for Board {
     }
 }
 
+#[test]
+fn king_position_test() {
+    let board = Board::new();
+
+    assert_eq!(
+        board.king_positions,
+        (
+            Position::from_uci("e1").unwrap(),
+            Position::from_uci("e8").unwrap()
+        )
+    );
+
+    // Not a legal move
+    let king_moved = board
+        .make_move(
+            Position::from_uci("e1").unwrap(),
+            Position::from_uci("e2").unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(
+        king_moved.king_positions,
+        (
+            Position::from_uci("e2").unwrap(),
+            Position::from_uci("e8").unwrap()
+        )
+    );
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PlayableTeam {
     White,
