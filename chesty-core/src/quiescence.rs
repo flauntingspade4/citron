@@ -9,8 +9,8 @@ const DELTA: i16 = 2 * PAWN_VALUE;
 
 impl Board {
     #[must_use]
-    pub fn quiesce(&self, mut alpha: i16, beta: i16) -> i16 {
-        let stand_pat = self.static_evaluation();
+    pub fn quiesce(&self, mut alpha: i16, beta: i16, ply: u8) -> i16 {
+        let stand_pat = self.static_evaluation(ply);
         let stand_pat = if self.to_play == PlayableTeam::White {
             stand_pat
         } else {
@@ -44,7 +44,7 @@ impl Board {
             if self.in_endgame() || stand_pat + DELTA + self[to].piece_value() > alpha {
                 let possible_board = self.make_move(from, to).unwrap();
 
-                let score = -possible_board.quiesce(-beta, -alpha);
+                let score = -possible_board.quiesce(-beta, -alpha, ply + 1);
 
                 if score > alpha {
                     if score >= beta {

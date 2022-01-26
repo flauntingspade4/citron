@@ -127,7 +127,7 @@ impl Board {
         previous_null: bool,
     ) -> i16 {
         if depth == 0 {
-            return self.quiesce(alpha, beta);
+            return self.quiesce(alpha, beta, ply);
         }
 
         let hash = hash(self);
@@ -188,7 +188,7 @@ impl Board {
                 let possible_board = self.make_move(*from, *to).unwrap();
 
                 let eval = -possible_board.evaluate_private(
-                    depth.saturating_sub(3),
+                    depth - 3,
                     ply + 1,
                     -beta,
                     -(beta - 1),

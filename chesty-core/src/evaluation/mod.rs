@@ -19,7 +19,7 @@ const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 125;
 
 impl Board {
     #[must_use]
-    pub fn static_evaluation(&self) -> i16 {
+    pub fn static_evaluation(&self, ply: u8) -> i16 {
         #[cfg(feature = "debug")]
         POSITIONS_CONSIDERED.fetch_add(1, AtomicOrdering::SeqCst);
 
@@ -32,6 +32,7 @@ impl Board {
             } else {
                 self.end_game_evaluation()
             }
+            - ply as i16
     }
     pub fn calculate_material(&mut self) {
         self.material = self.pieces().map(|p| p.value()).sum();
