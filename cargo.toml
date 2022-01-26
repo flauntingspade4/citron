@@ -2,7 +2,6 @@
 members = [
     "chesty-cli",
     "chesty-core",
-    "chesty-uci",
 ]
 
 [profile.release]
