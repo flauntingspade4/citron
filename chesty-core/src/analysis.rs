@@ -25,7 +25,7 @@ pub enum Node {
 impl Node {
     pub const fn into_inner(self) -> i16 {
         match self {
-            Self::PvNode(s) | Self::AllNode(s) => s,
+            Self::PvNode(s) | Self::AllNode(s) | Self::CutNode(s) => s,
         }
     }
 }
@@ -129,7 +129,7 @@ impl Board {
         let hash = hash(self);
 
         if let Some(t) = transposition_table.get(&hash) {
-            if t.depth >= depth {
+            if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
                 }
@@ -137,14 +137,18 @@ impl Board {
         }
 
         // Null move
-        /*if !self.in_endgame() && depth >= 3 && !previous_null {
+        if !self.in_endgame()
+            && depth > 2
+            && !previous_null
+            && self.static_evaluation(ply) >= beta
+        {
             let board = self.make_null_move();
 
             let value = -board.evaluate_private(
-                depth.saturating_sub(4),
+                depth.saturating_sub(3),
                 ply,
                 -beta,
-                -(beta - 1),
+                1 - beta,
                 (transposition_table, killer_table),
                 true,
             );
@@ -152,7 +156,7 @@ impl Board {
             if value >= beta {
                 return value;
             }
-        }*/
+        }
 
         // 0 to represent two empty `Position`s
         let mut best_move = 0;
@@ -342,7 +346,9 @@ impl Board {
 
 #[test]
 fn good_test() {
-    let board = Board::from_fen("3rk2r/1p4pp/p1p1bp2/2Bn4/B7/P4P2/3K3P/5R2 b k - 3 22").unwrap();
+    let board =
+        Board::from_fen("r1bqkb1r/ppp3pp/2n2p2/3np1N1/2B4P/8/PPPP1PP1/RNBQK2R w KQkq - 0 7")
+            .unwrap();
 
     println!("{}", board);
 
@@ -369,8 +375,8 @@ fn good_test() {
 
     #[cfg(feature = "debug")]
     println!(
-        "{} nodes/s",
-        POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize,
+        "{}k nodes/s",
+        POSITIONS_CONSIDERED.load(Ordering::SeqCst) / elapsed as usize,
     );
 }
 
@@ -402,8 +408,8 @@ fn horde() {
 
     #[cfg(feature = "debug")]
     println!(
-        "{} nodes/s",
-        POSITIONS_CONSIDERED.load(Ordering::SeqCst) * 1000 / elapsed as usize
+        "{}k nodes/s",
+        POSITIONS_CONSIDERED.load(Ordering::SeqCst) / elapsed as usize
     );
 }
 
@@ -415,7 +421,7 @@ fn fight_self() {
     let mut fast_won = 0;
     let mut slow_won = 0;
 
-    let depth = 6;
+    let depth = 4;
 
     for _ in 0..1 {
         let mut board = Board::new();
@@ -424,7 +430,7 @@ fn fight_self() {
 
         match fast_to_play {
             PlayableTeam::White => {
-                for i in 0..80 {
+                for i in 0..40 {
                     let table = board.iterative_deepening(depth);
 
                     let best = table.get(&hash(&board)).unwrap();
