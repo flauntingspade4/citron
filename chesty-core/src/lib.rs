@@ -215,7 +215,7 @@ impl Board {
         }
     }
     const fn in_endgame(&self) -> bool {
-        self.absolute_material <= 12
+        self.absolute_material <= 24 * PAWN_VALUE
     }
 }
 
