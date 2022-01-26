@@ -24,8 +24,8 @@ pub const WHITE_PAWN_HEATMAP: [i16; 64] = [
     0, 0, 0, 0, 0, 0, 30, 40, // a file
     0, 0, 0, 0, 0, 0, 30, 40, // b file
     0, 0, 0, 0, 0, 0, 30, 40, // c file
-    0, 0, 10, 20, 20, 30, 30, 40, // d file
-    0, 0, 10, 20, 20, 30, 30, 40, // e file
+    0, 0, 0, 20, 20, 30, 30, 40, // d file
+    0, 0, 0, 20, 20, 30, 30, 40, // e file
     0, 0, 0, 0, 0, 0, 30, 40, // f file
     0, 0, 0, 0, 0, 0, 30, 40, // g file
     0, 0, 0, 0, 0, 0, 30, 40, // h file
@@ -35,8 +35,8 @@ pub const BLACK_PAWN_HEATMAP: [i16; 64] = [
     -40, -30, 0, 0, 0, 0, 0, 0, // a file
     -40, -30, 0, 0, 0, 0, 0, 0, // b file
     -40, -30, 0, 0, 0, 0, 0, 0, // c file
-    -40, -30, -30, -20, -20, -10, 0, 0, // d file
-    -40, -30, -30, -20, -20, -10, 0, 0, // e file
+    -40, -30, -30, -20, -20, 0, 0, 0, // d file
+    -40, -30, -30, -20, -20, 0, 0, 0, // e file
     -40, -30, 0, 0, 0, 0, 0, 0, // f file
     -40, -30, 0, 0, 0, 0, 0, 0, // g file
     -40, -30, 0, 0, 0, 0, 0, 0, // h file
@@ -46,9 +46,9 @@ pub const WHITE_ROOK_HEATMAP: [i16; 64] = [
     10, 0, 0, 0, 0, 0, 0, 0, // a file
     0, 0, 0, 0, 0, 0, 0, 0, // b file
     0, 0, 0, 0, 0, 0, 0, 0, // c file
-    20, 0, 0, 0, 0, 0, 0, 0, // d file
-    20, 0, 0, 0, 0, 0, 0, 0, // e file
-    0, 0, 0, 0, 0, 0, 0, 0, // f file
+    35, 0, 0, 0, 0, 0, 0, 0, // d file
+    0, 0, 0, 0, 0, 0, 0, 0, // e file
+    35, 0, 0, 0, 0, 0, 0, 0, // f file
     0, 0, 0, 0, 0, 0, 0, 0, // g file
     10, 0, 0, 0, 0, 0, 0, 0, // h file
 ];
@@ -57,9 +57,9 @@ pub const BLACK_ROOK_HEATMAP: [i16; 64] = [
     0, 0, 0, 0, 0, 0, 0, -10, // a file
     0, 0, 0, 0, 0, 0, 0, 0, // b file
     0, 0, 0, 0, 0, 0, 0, 0, // c file
-    0, 0, 0, 0, 0, 0, 0, -20, // d file
-    0, 0, 0, 0, 0, 0, 0, -20, // e file
-    0, 0, 0, 0, 0, 0, 0, 0, // f file
+    0, 0, 0, 0, 0, 0, 0, -35, // d file
+    0, 0, 0, 0, 0, 0, 0, 0, // e file
+    0, 0, 0, 0, 0, 0, 0, -35, // f file
     0, 0, 0, 0, 0, 0, 0, 0, // g file
     0, 0, 0, 0, 0, 0, 0, -10, // h file
 ];
@@ -85,3 +85,24 @@ pub const BLACK_KNIGHT_HEATMAP: [i16; 64] = [
     0, 0, 0, 0, 0, 0, 0, 10, // g file
     30, 20, 20, 20, 20, 20, 20, 30, // h file
 ];
+
+#[test]
+fn positional_value_test() {
+    use crate::PlayableTeam;
+
+    assert_eq!(
+        Piece::new(PieceKind::Knight, PlayableTeam::White)
+            .positional_value(Position::from_uci("a8").unwrap()),
+        WHITE_KNIGHT_HEATMAP[Position::from_uci("a8").unwrap().index() as usize]
+    );
+    assert_eq!(
+        Piece::new(PieceKind::King, PlayableTeam::White)
+            .positional_value(Position::from_uci("e1").unwrap()),
+        0
+    );
+    assert_eq!(
+        Piece::new(PieceKind::King, PlayableTeam::Black)
+            .positional_value(Position::from_uci("e8").unwrap()),
+        0
+    );
+}
