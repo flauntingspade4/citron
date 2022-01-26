@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub const BRANCHING_FACTOR: usize = 35;
-const ASPIRATION_WINDOW: i16 = 2;
+const ASPIRATION_WINDOW: i16 = 25;
 
 const MULTICUT_M: usize = 5;
 const MULTICUT_C: usize = 2;
@@ -64,30 +64,25 @@ impl Board {
         #[cfg(feature = "debug")]
         let bar = indicatif::ProgressBar::new(depth as u64);
 
-        for i in 0..=depth {
-            let eval = self.evaluate_private(
-                i,
-                0,
-                alpha,
-                beta,
-                (&mut transposition_table, killer_table.as_mut_slice()),
-                false,
-            );
-            if eval <= alpha || eval >= beta {
-                beta = KING_VALUE + 1;
-                alpha = -KING_VALUE - 1;
-                transposition_table.clear();
-                self.evaluate_private(
-                    i,
+        for depth in 0..=depth {
+            for i in 0.. {
+                let eval = self.evaluate_private(
+                    depth,
                     0,
                     alpha,
                     beta,
                     (&mut transposition_table, killer_table.as_mut_slice()),
                     false,
                 );
-            } else {
-                alpha = eval - ASPIRATION_WINDOW;
-                beta = eval + ASPIRATION_WINDOW;
+                if eval <= alpha {
+                    alpha -= ASPIRATION_WINDOW << (3 * i);
+                } else if eval >= beta {
+                    beta += ASPIRATION_WINDOW << (3 * i);
+                } else {
+                    alpha = eval - ASPIRATION_WINDOW;
+                    beta = eval + ASPIRATION_WINDOW;
+                    break;
+                }
             }
             #[cfg(feature = "debug")]
             bar.inc(1);
