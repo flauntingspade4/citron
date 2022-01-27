@@ -76,9 +76,9 @@ impl Board {
                     false,
                 );
                 if eval <= alpha {
-                    alpha -= ASPIRATION_WINDOW << (3 * i);
+                    alpha -= ASPIRATION_WINDOW << (2 * i);
                 } else if eval >= beta {
-                    beta += ASPIRATION_WINDOW << (3 * i);
+                    beta += ASPIRATION_WINDOW << (2 * i);
                 } else {
                     alpha = eval - ASPIRATION_WINDOW;
                     beta = eval + ASPIRATION_WINDOW;
@@ -137,10 +137,7 @@ impl Board {
         }
 
         // Null move
-        if !self.in_endgame()
-            && depth > 2
-            && !previous_null
-            && self.static_evaluation(ply) >= beta
+        if !self.in_endgame() && depth > 2 && !previous_null && self.static_evaluation(ply) >= beta
         {
             let board = self.make_null_move();
 

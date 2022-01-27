@@ -27,7 +27,7 @@ use piece::{Piece, PieceKind, PAWN_VALUE, QUEEN_VALUE};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Board {
     // The array of pieces
-    board: [Piece; 64],
+    board: [u64; 8],
     to_play: PlayableTeam,
     turn: u16,
     material: i16,
@@ -37,7 +37,7 @@ pub struct Board {
 
 impl Board {
     const EMPTY_BOARD: Self = Self {
-        board: [Piece::EMPTY; 64],
+        board: [0; 8],
         to_play: PlayableTeam::White,
         turn: 0,
         material: 0,
@@ -49,7 +49,7 @@ impl Board {
     pub fn new() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0").unwrap()
     }
-    pub fn pieces(&self) -> impl Iterator<Item = &Piece> {
+    /*pub fn pieces(&self) -> impl Iterator<Item = &Piece> {
         self.board.iter()
     }
     pub fn positions_pieces(&self) -> impl Iterator<Item = (Position, &Piece)> {
@@ -57,7 +57,7 @@ impl Board {
     }
     pub fn positions_squares(&self) -> impl Iterator<Item = (Position, &Piece)> {
         Position::positions().zip(self.pieces())
-    }
+    }*/
     #[must_use]
     pub const fn to_play(&self) -> PlayableTeam {
         self.to_play
@@ -216,6 +216,9 @@ impl Board {
     }
     const fn in_endgame(&self) -> bool {
         self.absolute_material <= 24 * PAWN_VALUE
+    }
+    pub fn team_at(&self, position: Position) -> PlayableTeam {
+        let index = 1 << position.index() as u64;
     }
 }
 

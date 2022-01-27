@@ -35,9 +35,10 @@ impl Board {
             - ply as i16
     }
     pub fn calculate_material(&mut self) {
-        self.material = self.pieces().map(|p| p.value()).sum();
+        todo!("material calculation")
+        /*self.material = self.pieces().map(|p| p.value()).sum();
         self.absolute_material =
-            self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;
+            self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;*/
     }
 }
 

@@ -55,7 +55,7 @@ impl Position {
         self.x() < 8 && self.y() < 8
     }
     pub fn positions() -> impl Iterator<Item = Self> {
-        (0..8).flat_map(|x| (0..8).map(move |y| Self::new(x, y)))
+        (0..64).map(|i| Self(i))
     }
     #[must_use]
     pub fn checked_add_to(&self, x: i8, y: i8) -> Option<Self> {
