@@ -8,6 +8,9 @@ impl Position {
     pub const fn new(x: u8, y: u8) -> Self {
         Self((x << 3) + y)
     }
+    pub(crate) const fn from_u8(position: u8) -> Self{ 
+        Self(position)
+    }
     #[must_use]
     pub fn from_uci(input: &str) -> Option<Self> {
         let mut chars = input.chars();

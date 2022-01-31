@@ -10,6 +10,7 @@ pub mod analysis;
 mod evaluation;
 mod heatmap;
 mod killer;
+pub mod magic;
 mod move_gen;
 mod move_ordering;
 pub mod pgn;
@@ -138,18 +139,8 @@ impl Board {
         for c in fen_parts.next()?.chars() {
             let pos = Position::new(x, y);
             match c {
-                'p' => {
-                    board[pos] = Piece::new(PieceKind::Pawn, Black);
-                    if y != 6 {
-                        board[pos].make_move();
-                    }
-                }
-                'P' => {
-                    board[pos] = Piece::new(PieceKind::Pawn, White);
-                    if y != 1 {
-                        board[pos].make_move();
-                    }
-                }
+                'p' => board[pos] = Piece::new(PieceKind::Pawn, Black),
+                'P' => board[pos] = Piece::new(PieceKind::Pawn, White),
                 'r' => board[pos] = Piece::new(PieceKind::Rook, Black),
                 'R' => board[pos] = Piece::new(PieceKind::Rook, White),
                 'n' => board[pos] = Piece::new(PieceKind::Knight, Black),
@@ -222,7 +213,7 @@ impl Board {
     }
 }
 
-impl Index<Position> for Board {
+/*impl Index<Position> for Board {
     type Output = Piece;
 
     fn index(&self, index: Position) -> &Self::Output {
@@ -238,7 +229,7 @@ impl IndexMut<Position> for Board {
 
         &mut self.board[index]
     }
-}
+}*/
 
 impl Display for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
