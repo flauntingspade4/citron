@@ -3,7 +3,7 @@
 
 use core::{
     fmt::{Debug, Display, Formatter},
-    ops::{Index, IndexMut, Not},
+    ops::Not,
 };
 
 pub mod analysis;
@@ -11,7 +11,7 @@ mod evaluation;
 mod heatmap;
 mod killer;
 pub mod magic;
-mod move_gen;
+// mod move_gen;
 mod move_ordering;
 pub mod pgn;
 pub mod piece;
@@ -28,7 +28,8 @@ use piece::{Piece, PieceKind, PAWN_VALUE, QUEEN_VALUE};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Board {
     // The array of pieces
-    board: [u64; 8],
+    teams: [u64; 2],
+    pieces: [u64; 6],
     to_play: PlayableTeam,
     turn: u16,
     material: i16,
@@ -38,7 +39,8 @@ pub struct Board {
 
 impl Board {
     const EMPTY_BOARD: Self = Self {
-        board: [0; 8],
+        teams: [0; 2],
+        pieces: [0; 6],
         to_play: PlayableTeam::White,
         turn: 0,
         material: 0,
@@ -125,6 +127,29 @@ impl Board {
 
         board
     }
+    fn flip_piece(&mut self, position: Position, piece: Piece) {
+        let index = 1 << position.index() as u64;
+
+        let team_index = match piece.team() {
+            Team::White => 1,
+            Team::Black => 0,
+            Team::Neither => panic!(),
+        };
+
+        self.teams[team_index] ^= index;
+
+        let piece_index = match piece.kind() {
+            PieceKind::None => panic!(),
+            PieceKind::Pawn => 0,
+            PieceKind::Rook => 1,
+            PieceKind::Knight => 2,
+            PieceKind::Bishop => 3,
+            PieceKind::Queen => 4,
+            PieceKind::King => 5,
+        };
+
+        self.pieces[piece_index] ^= index;
+    }
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
         use PlayableTeam::{Black, White};
@@ -139,23 +164,23 @@ impl Board {
         for c in fen_parts.next()?.chars() {
             let pos = Position::new(x, y);
             match c {
-                'p' => board[pos] = Piece::new(PieceKind::Pawn, Black),
-                'P' => board[pos] = Piece::new(PieceKind::Pawn, White),
-                'r' => board[pos] = Piece::new(PieceKind::Rook, Black),
-                'R' => board[pos] = Piece::new(PieceKind::Rook, White),
-                'n' => board[pos] = Piece::new(PieceKind::Knight, Black),
-                'N' => board[pos] = Piece::new(PieceKind::Knight, White),
-                'b' => board[pos] = Piece::new(PieceKind::Bishop, Black),
-                'B' => board[pos] = Piece::new(PieceKind::Bishop, White),
-                'q' => board[pos] = Piece::new(PieceKind::Queen, Black),
-                'Q' => board[pos] = Piece::new(PieceKind::Queen, White),
+                'p' => board.flip_piece(pos, Piece::new(PieceKind::Pawn, Black)),
+                'P' => board.flip_piece(pos, Piece::new(PieceKind::Pawn, White)),
+                'r' => board.flip_piece(pos, Piece::new(PieceKind::Rook, Black)),
+                'R' => board.flip_piece(pos, Piece::new(PieceKind::Rook, White)),
+                'n' => board.flip_piece(pos, Piece::new(PieceKind::Knight, Black)),
+                'N' => board.flip_piece(pos, Piece::new(PieceKind::Knight, White)),
+                'b' => board.flip_piece(pos, Piece::new(PieceKind::Bishop, Black)),
+                'B' => board.flip_piece(pos, Piece::new(PieceKind::Bishop, White)),
+                'q' => board.flip_piece(pos, Piece::new(PieceKind::Queen, Black)),
+                'Q' => board.flip_piece(pos, Piece::new(PieceKind::Queen, White)),
                 'k' => {
                     board.king_positions.1 = pos;
-                    board[pos] = Piece::new(PieceKind::King, Black);
+                    board.flip_piece(pos, Piece::new(PieceKind::King, Black))
                 }
                 'K' => {
                     board.king_positions.0 = pos;
-                    board[pos] = Piece::new(PieceKind::King, White);
+                    board.flip_piece(pos, Piece::new(PieceKind::King, White))
                 }
                 '/' => {
                     if x == 8 {
@@ -208,8 +233,35 @@ impl Board {
     const fn in_endgame(&self) -> bool {
         self.absolute_material <= 24 * PAWN_VALUE
     }
-    pub fn team_at(&self, position: Position) -> PlayableTeam {
+    pub fn team_at(&self, position: Position) -> Team {
         let index = 1 << position.index() as u64;
+
+        if self.teams[0] & index == index {
+            Team::White
+        } else if self.teams[1] & index == index {
+            Team::Black
+        } else {
+            Team::Neither
+        }
+    }
+    pub fn piece_at(&self, position: Position) -> PieceKind {
+        let index = 1 << position.index() as u64;
+
+        if self.pieces[0] & index == index {
+            PieceKind::Pawn
+        } else if self.pieces[1] & index == index {
+            PieceKind::Rook
+        } else if self.pieces[2] & index == index {
+            PieceKind::Knight
+        } else if self.pieces[3] & index == index {
+            PieceKind::Bishop
+        } else if self.pieces[4] & index == index {
+            PieceKind::Queen
+        } else if self.pieces[5] & index == index {
+            PieceKind::King
+        } else {
+            PieceKind::None
+        }
     }
 }
 

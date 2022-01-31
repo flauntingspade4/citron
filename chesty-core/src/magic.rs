@@ -224,9 +224,6 @@ const MASK_RANK: [u64; 8] = [
     0xff00000000000000,
 ];
 
-// const A_FILE: usize = 0;
-// const H_FILE: usize = 7;
-
 const ROOK_TABLE: [SMagic; 64] = [
     SMagic::new(0x101010101017e, 0x80001020400080, 52),
     SMagic::new(0x202020202027c, 0x40001000200040, 53),
