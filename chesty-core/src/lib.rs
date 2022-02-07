@@ -1,51 +1,59 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![feature(once_cell, mixed_integer_ops)]
+#![feature(once_cell, mixed_integer_ops, const_mut_refs)]
 
 use core::{
     fmt::{Debug, Display, Formatter},
     ops::Not,
 };
 
-pub mod analysis;
-mod evaluation;
-mod heatmap;
-mod killer;
+// pub mod analysis;
+// mod evaluation;
+// mod heatmap;
+// mod killer;
 pub mod magic;
-// mod move_gen;
-mod move_ordering;
-pub mod pgn;
+mod move_gen;
+// mod move_ordering;
+// pub mod pgn;
 pub mod piece;
 mod position;
-mod quiescence;
+// mod quiescence;
 mod transposition_table;
 
-pub use analysis::explore_line;
+// pub use analysis::explore_line;
 pub use position::Position;
-pub use transposition_table::hash;
+// pub use transposition_table::hash;
 
-use piece::{Piece, PieceKind, PAWN_VALUE, QUEEN_VALUE};
+pub use move_gen::MoveGen;
+use piece::{Piece, PAWN_VALUE};
+use transposition_table::ZOBRIST_KEYS;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Board {
     // The array of pieces
-    teams: [u64; 2],
-    pieces: [u64; 6],
+    pieces: [[u64; 6]; 2],
+    all_pieces: [u64; 2],
+    attackable: [u64; 2],
+    occupied: u64,
     to_play: PlayableTeam,
     turn: u16,
     material: i16,
     absolute_material: i16,
     king_positions: (Position, Position),
+    hash: u64,
 }
 
 impl Board {
     const EMPTY_BOARD: Self = Self {
-        teams: [0; 2],
-        pieces: [0; 6],
+        pieces: [[0; 6]; 2],
+        all_pieces: [0; 2],
+        attackable: [0; 2],
+        occupied: 0,
         to_play: PlayableTeam::White,
         turn: 0,
         material: 0,
         absolute_material: 0,
         king_positions: (Position::new(0, 0), Position::new(0, 0)),
+        hash: 0,
     };
     /// Creates a new board, with a default configuration
     #[must_use]
@@ -69,56 +77,35 @@ impl Board {
     pub fn make_move(&self, from: Position, to: Position) -> Option<Self> {
         let mut board = self.clone();
 
-        let mut piece = core::mem::replace(&mut board[from], Piece::EMPTY);
+        board.make_move(from, to);
 
-        piece.is_piece().then(|| {
-            piece.make_move();
+        board.to_play = !board.to_play;
+        board.turn += 1;
 
-            let mut castled = false;
-            // Pawn promotion
-            if piece.kind() == PieceKind::Pawn {
-                let y = to.y();
-                if y == 0 {
-                    piece.promote();
-                    board.material -= QUEEN_VALUE + PAWN_VALUE;
-                } else if y == 7 {
-                    piece.promote();
-                    board.material += QUEEN_VALUE - PAWN_VALUE;
-                }
-            } else {
-                // Castling
-                if piece.kind() == PieceKind::King && from.x() == 4 {
-                    if to.x() == 0 {
-                        let castling_rook = core::mem::take(&mut board[to]);
+        Some(board)
+    }
+    pub fn add_piece(&mut self, piece: Piece, position: Position) {
+        let squareIndex = position.index() as u64;
 
-                        board[Position::new(2, to.y())] = piece;
-                        board.moved_king(Position::new(2, to.y()));
-                        board[Position::new(3, to.y())] = castling_rook;
-                        castled = true;
-                    } else if to.x() == 7 {
-                        let castling_rook = core::mem::take(&mut board[to]);
+        let square = 1 << squareIndex;
 
-                        board[Position::new(6, to.y())] = piece;
-                        board.moved_king(Position::new(6, to.y()));
-                        board[Position::new(5, to.y())] = castling_rook;
-                        castled = true;
-                    }
-                }
-            }
+        self.pieces[piece.team() as usize][piece.kind() as usize] |= square;
+        self.all_pieces[piece.team() as usize] |= square;
 
-            if !castled {
-                board.material -= board[to].value();
-                board[to] = piece;
-                if board[to].kind() == PieceKind::King {
-                    board.moved_king(to);
-                }
-            };
+        self.occupied |= square;
 
-            board.to_play = !board.to_play;
-            board.turn += 1;
+        self.attackable[piece.team() as usize] ^= square;
+        self.hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
+    }
+    fn remove_piece(&mut self, piece: Piece, position: Position) {
+        let square = 1 << position.index() as u64;
 
-            board
-        })
+        self.pieces[piece.team() as usize][piece.kind() as usize] ^= square;
+        self.all_pieces[piece.team() as usize] ^= square;
+
+        self.occupied ^= square;
+        self.attackable[piece.team() as usize] ^= square;
+        self.hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
     }
     pub fn make_null_move(&self) -> Self {
         let mut board = self.clone();
@@ -127,33 +114,8 @@ impl Board {
 
         board
     }
-    fn flip_piece(&mut self, position: Position, piece: Piece) {
-        let index = 1 << position.index() as u64;
-
-        let team_index = match piece.team() {
-            Team::White => 1,
-            Team::Black => 0,
-            Team::Neither => panic!(),
-        };
-
-        self.teams[team_index] ^= index;
-
-        let piece_index = match piece.kind() {
-            PieceKind::None => panic!(),
-            PieceKind::Pawn => 0,
-            PieceKind::Rook => 1,
-            PieceKind::Knight => 2,
-            PieceKind::Bishop => 3,
-            PieceKind::Queen => 4,
-            PieceKind::King => 5,
-        };
-
-        self.pieces[piece_index] ^= index;
-    }
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
-        use PlayableTeam::{Black, White};
-
         let mut board = Self::EMPTY_BOARD;
 
         let mut fen_parts = fen.split(' ');
@@ -164,23 +126,23 @@ impl Board {
         for c in fen_parts.next()?.chars() {
             let pos = Position::new(x, y);
             match c {
-                'p' => board.flip_piece(pos, Piece::new(PieceKind::Pawn, Black)),
-                'P' => board.flip_piece(pos, Piece::new(PieceKind::Pawn, White)),
-                'r' => board.flip_piece(pos, Piece::new(PieceKind::Rook, Black)),
-                'R' => board.flip_piece(pos, Piece::new(PieceKind::Rook, White)),
-                'n' => board.flip_piece(pos, Piece::new(PieceKind::Knight, Black)),
-                'N' => board.flip_piece(pos, Piece::new(PieceKind::Knight, White)),
-                'b' => board.flip_piece(pos, Piece::new(PieceKind::Bishop, Black)),
-                'B' => board.flip_piece(pos, Piece::new(PieceKind::Bishop, White)),
-                'q' => board.flip_piece(pos, Piece::new(PieceKind::Queen, Black)),
-                'Q' => board.flip_piece(pos, Piece::new(PieceKind::Queen, White)),
+                'p' => board.add_piece(Piece::BlackPawn, pos),
+                'P' => board.add_piece(Piece::WhitePawn, pos),
+                'r' => board.add_piece(Piece::BlackRook, pos),
+                'R' => board.add_piece(Piece::WhiteRook, pos),
+                'n' => board.add_piece(Piece::BlackKnight, pos),
+                'N' => board.add_piece(Piece::WhiteKnight, pos),
+                'b' => board.add_piece(Piece::BlackBishop, pos),
+                'B' => board.add_piece(Piece::WhiteBishop, pos),
+                'q' => board.add_piece(Piece::BlackQueen, pos),
+                'Q' => board.add_piece(Piece::WhiteQueen, pos),
                 'k' => {
                     board.king_positions.1 = pos;
-                    board.flip_piece(pos, Piece::new(PieceKind::King, Black))
+                    board.add_piece(Piece::BlackKing, pos)
                 }
                 'K' => {
                     board.king_positions.0 = pos;
-                    board.flip_piece(pos, Piece::new(PieceKind::King, White))
+                    board.add_piece(Piece::WhiteKing, pos)
                 }
                 '/' => {
                     if x == 8 {
@@ -220,7 +182,7 @@ impl Board {
         let turn = fen_parts.next()?.parse().ok()?;
 
         board.turn = turn;
-        board.calculate_material();
+        // board.calculate_material();
 
         Some(board)
     }
@@ -232,36 +194,6 @@ impl Board {
     }
     const fn in_endgame(&self) -> bool {
         self.absolute_material <= 24 * PAWN_VALUE
-    }
-    pub fn team_at(&self, position: Position) -> Team {
-        let index = 1 << position.index() as u64;
-
-        if self.teams[0] & index == index {
-            Team::White
-        } else if self.teams[1] & index == index {
-            Team::Black
-        } else {
-            Team::Neither
-        }
-    }
-    pub fn piece_at(&self, position: Position) -> PieceKind {
-        let index = 1 << position.index() as u64;
-
-        if self.pieces[0] & index == index {
-            PieceKind::Pawn
-        } else if self.pieces[1] & index == index {
-            PieceKind::Rook
-        } else if self.pieces[2] & index == index {
-            PieceKind::Knight
-        } else if self.pieces[3] & index == index {
-            PieceKind::Bishop
-        } else if self.pieces[4] & index == index {
-            PieceKind::Queen
-        } else if self.pieces[5] & index == index {
-            PieceKind::King
-        } else {
-            PieceKind::None
-        }
     }
 }
 
@@ -283,18 +215,22 @@ impl IndexMut<Position> for Board {
     }
 }*/
 
-impl Display for Board {
+/*impl Display for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         for y in 0..8 {
             for x in 0..8 {
-                write!(f, "| {} |", self[Position::new(x, 7 - y)])?;
+                write!(
+                    f,
+                    "| {} |",
+                    self.board[Position::new(x, 7 - y).index() as usize]
+                )?;
             }
             writeln!(f)?;
         }
 
         Ok(())
     }
-}
+}*/
 
 impl Debug for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
@@ -335,6 +271,7 @@ fn king_position_test() {
     );
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PlayableTeam {
     White,
@@ -377,6 +314,7 @@ impl Not for PlayableTeam {
     }
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Team {
     White,

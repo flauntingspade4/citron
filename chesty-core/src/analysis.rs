@@ -9,7 +9,6 @@ use crate::{
     Board,
 };
 
-pub const BRANCHING_FACTOR: usize = 35;
 const ASPIRATION_WINDOW: i16 = 25;
 
 const MULTICUT_M: usize = 5;

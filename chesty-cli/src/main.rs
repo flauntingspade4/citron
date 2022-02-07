@@ -1,9 +1,9 @@
-use chesty_core::{explore_line, hash, Board, Position};
+// use chesty_core::{explore_line, hash, Board, Position};
 
 use clap::{App, Arg, SubCommand};
 
 fn main() {
-    let matches = App::new("chesty-cli")
+    /*let matches = App::new("chesty-cli")
         .version("0.1")
         .author("Elliot W")
         .subcommand(
@@ -134,5 +134,5 @@ fn get_positions() -> (Position, Position) {
                 }
             }
         }
-    }
+    }*/
 }

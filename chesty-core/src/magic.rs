@@ -396,7 +396,7 @@ const BISHOP_INDEX_BITS: [u64; 64] = [
     5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6,
 ];
 
-const fn pop_lsb(mask: &mut u64) -> u64 {
+pub const fn pop_lsb(mask: &mut u64) -> u64 {
     let index = bitscan_forward(*mask);
 
     *mask ^= 1 << index;
@@ -601,6 +601,18 @@ pub fn bishop_attacks(position: Position, mut blockers: u64) -> u64 {
     blockers &= BISHOP_MASKS[square];
     BISHOP_ATTACKS[square]
         [((blockers * BISHOP_MAGICS[square]) >> (64 - BISHOP_INDEX_BITS[square])) as usize]
+}
+
+pub fn knight_attacks(position: Position, blockers: u64) -> u64 {
+    let square = position.index() as usize;
+
+    KNIGHT_ATTACKS[square] & !blockers
+}
+
+pub fn king_attacks(position: Position, blockers: u64) -> u64 {
+    let square = position.index() as usize;
+
+    KING_ATTACKS[square] & !blockers
 }
 
 #[repr(u8)]
