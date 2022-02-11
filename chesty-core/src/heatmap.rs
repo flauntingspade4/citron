@@ -5,6 +5,7 @@ use crate::{
 
 impl Piece {
     #[must_use]
+    /// Gets the positional value for `self`, where `self` is at `position`
     pub fn positional_value(&self, position: Position) -> i16 {
         let index = position.index() as usize;
 
