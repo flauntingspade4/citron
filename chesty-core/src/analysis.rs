@@ -9,6 +9,7 @@ use crate::{
     Board,
 };
 
+/// The average number of legal moves in any given position
 pub const BRANCHING_FACTOR: usize = 35;
 const ASPIRATION_WINDOW: i16 = 2;
 
@@ -16,12 +17,17 @@ const MULTICUT_M: usize = 5;
 const MULTICUT_C: usize = 2;
 
 #[derive(Debug, Clone, Copy)]
+/// The possible different kinds of nodes that can be saved
 pub enum Node {
+    /// A principle variation node, one that is acceptable for
+    /// both players
     PvNode(i16),
+    /// An all node, where no move was good enough to improve alpha
     AllNode(i16),
 }
 
 impl Node {
+    /// Returns the alpha score of the given node
     pub const fn into_inner(self) -> i16 {
         match self {
             Self::PvNode(s) | Self::AllNode(s) => s,
@@ -29,6 +35,8 @@ impl Node {
     }
 }
 
+/// Prints information about the best moves calculated from a
+/// given position, and what the best calculated response is
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
         if let Some(best) = transposition_table.get(&hash(&starting_board)) {
@@ -49,10 +57,13 @@ pub fn explore_line(mut starting_board: Board, transposition_table: &Transpositi
 
 impl Board {
     #[must_use]
+    /// Evaluate using iterative deepening, to a given depth.
+    /// Just calls [`Board::iterative_deepening_ply`] with `depth * 2`
     pub fn iterative_deepening(&self, depth: u8) -> TranspositionTable {
         self.iterative_deepening_ply(depth * 2)
     }
     #[must_use]
+    /// Evaluate using iterative deepening, to a given depth ply
     pub fn iterative_deepening_ply(&self, depth: u8) -> TranspositionTable {
         let mut beta = KING_VALUE + 1;
         let mut alpha = -KING_VALUE - 1;
@@ -90,25 +101,8 @@ impl Board {
 
         transposition_table
     }
-    #[must_use]
-    pub fn evaluate(&self, depth: u8) -> TranspositionTable {
-        self.evaluate_ply(depth * 2)
-    }
-    #[must_use]
-    pub fn evaluate_ply(&self, depth: u8) -> TranspositionTable {
-        let beta = KING_VALUE + 1;
-        let alpha = -KING_VALUE - 1;
-
-        let mut transposition_table = TranspositionTable::new();
-        let mut killer_table = Vec::new();
-        killer_table.resize_with(depth as usize, KillerMoves::default);
-
-        let tables = (&mut transposition_table, killer_table.as_mut_slice());
-
-        self.evaluate_private(depth, 0, alpha, beta, tables, false);
-
-        transposition_table
-    }
+    /// The private evaluation function, that actually evaluates
+    /// a position
     fn evaluate_private(
         &self,
         depth: u8,
