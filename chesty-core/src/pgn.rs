@@ -1,5 +1,6 @@
 use crate::{piece::PieceKind, Board, PlayableTeam, Position};
 
+/// A way of representing the current move list
 pub struct Pgn {
     index: usize,
     moves: String,
@@ -8,6 +9,7 @@ pub struct Pgn {
 
 impl Pgn {
     #[must_use]
+    /// Creates a new list of moves
     pub const fn new() -> Self {
         Self {
             index: 1,
@@ -15,6 +17,7 @@ impl Pgn {
             to_play: PlayableTeam::White,
         }
     }
+    /// Adds a move to the list
     pub fn add_move(&mut self, played_move: (Position, Position), board: &Board) {
         let played_move = Move {
             from: played_move.0,
@@ -39,6 +42,7 @@ impl Pgn {
         }
     }
     #[must_use]
+    /// Returns the current move list
     pub fn finish(self) -> String {
         self.moves
     }

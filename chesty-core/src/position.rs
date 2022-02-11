@@ -1,14 +1,18 @@
 use core::fmt::{Display, Formatter, Result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// A way of representing any possible position
 pub struct Position(u8);
 
 impl Position {
     #[must_use]
+    /// Creates a new position off a given x and y
     pub const fn new(x: u8, y: u8) -> Self {
         Self((x << 3) + y)
     }
     #[must_use]
+    /// Attempts to parse `input`, returns the parsed
+    /// result if successful
     pub fn from_uci(input: &str) -> Option<Self> {
         let mut chars = input.chars();
 
@@ -39,32 +43,43 @@ impl Position {
         Some(Self::new(x, y))
     }
     #[must_use]
+    /// Gets the x coordinate of `self`
     pub const fn x(&self) -> u8 {
         self.0 >> 3
     }
     #[must_use]
+    /// Gets the y coordinate of `self`
     pub const fn y(&self) -> u8 {
         self.0 & 7
     }
     #[must_use]
-    pub const fn index(&self) -> u8 {
+    /// Gets the index of `self`
+    pub(crate) const fn index(&self) -> u8 {
         self.0
     }
     #[must_use]
+    /// Returns `true` if x and y are less than 64, false if not
     pub const fn is_valid(&self) -> bool {
-        self.x() < 8 && self.y() < 8
+        self.index() < 64
     }
+    /// Returns an iterator over all positions on the chess board
     pub fn positions() -> impl Iterator<Item = Self> {
-        (0..8).flat_map(|x| (0..8).map(move |y| Self::new(x, y)))
+        (0..64).map(|i| Self(i))
     }
     #[must_use]
+    /// Performs `self + (x, y)`, returning if it exists within the
+    /// bounds of the board
     pub fn checked_add_to(&self, x: i8, y: i8) -> Option<Self> {
         let (x0, y0) = (self.x(), self.y());
         let (x, y) = (x0.checked_add_signed(x)?, y0.checked_add_signed(y)?);
 
-        ((0..8).contains(&x) && (0..8).contains(&y)).then(|| Self::new(x as u8, y as u8))
+        let to_return = Self::new(x, y);
+
+        to_return.is_valid().then(|| to_return)
     }
     #[must_use]
+    /// Performs `self += (x, y)`, returning if it exists within the
+    /// bounds of the board
     pub fn checked_translate(&mut self, x: i8, y: i8) -> Option<()> {
         self.checked_add_to(x, y).map(|p| *self = p)
     }

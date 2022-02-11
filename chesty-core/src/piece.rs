@@ -2,14 +2,17 @@ use core::fmt::Display;
 
 use crate::{PlayableTeam, Team};
 
+/// The value of a pawn
 pub const PAWN_VALUE: i16 = 100;
 const ROOK_VALUE: i16 = 5 * PAWN_VALUE;
 const KNIGHT_VALUE: i16 = 3 * PAWN_VALUE;
 const BISHOP_VALUE: i16 = 3 * PAWN_VALUE + 25;
+/// The value of a queen
 pub const QUEEN_VALUE: i16 = 9 * PAWN_VALUE;
+/// The value of a king
 pub const KING_VALUE: i16 = 50 * PAWN_VALUE;
 
-/// A board piece - can be of type `PieceKind::Empty`
+/// A board piece - empty
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Piece {
     // Information about the piece
@@ -17,8 +20,11 @@ pub struct Piece {
 }
 
 impl Piece {
+    /// An empty piece
     pub const EMPTY: Self = Self { inner: 0 };
     #[must_use]
+    /// Creates a new [`Piece`] based off a given [`PieceKind`]
+    /// and [`PlayableTeam`]
     pub const fn new(kind: PieceKind, team: PlayableTeam) -> Self {
         // The first 4 bits are the piece's kind, the next
         // 2 are for it's team
@@ -149,12 +155,19 @@ impl Display for Piece {
 /// The possible different kinds of piece
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PieceKind {
+    /// An empty piece
     None,
+    /// A pawn
     Pawn,
+    /// A rook
     Rook,
+    /// A knight
     Knight,
+    /// A bishop
     Bishop,
+    /// A queen
     Queen,
+    /// A king
     King,
 }
 

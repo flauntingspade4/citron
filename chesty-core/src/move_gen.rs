@@ -209,6 +209,9 @@ impl Piece {
             }
         }
     }
+    /// Appends all the legal moves of the piece at
+    /// `position` on the board to `moves`. Only generates
+    /// capturing moves, for use in the quiescence function
     pub fn quiescence_moves(
         &self,
         position: Position,
@@ -243,6 +246,10 @@ impl Piece {
     }
 
     #[must_use]
+    /// Generates the number of moves that can be seen by the
+    /// piece at `position`, if the piece were a queen, and
+    /// enemy pieces are ignored. This is used for a king safety
+    /// heuristic
     pub fn virtual_mobility(&self, position: Position, board: &Board) -> i16 {
         let mut moves = 0;
 
