@@ -127,7 +127,7 @@ impl Board {
         }
 
         // Null move
-        /*if !self.in_endgame() && depth >= 3 && !previous_null {
+        if !self.in_endgame() && depth >= 3 && !previous_null {
             let board = self.make_null_move();
 
             let value = -board.evaluate_private(
@@ -142,7 +142,7 @@ impl Board {
             if value >= beta {
                 return value;
             }
-        }*/
+        }
 
         // 0 to represent two empty `Position`s
         let mut best_move = 0;
