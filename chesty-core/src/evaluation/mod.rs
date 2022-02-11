@@ -19,6 +19,8 @@ const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 125;
 
 impl Board {
     #[must_use]
+    /// A static evaluation heuristic, estimating who's winning
+    /// in the given position, and how much by
     pub fn static_evaluation(&self) -> i16 {
         #[cfg(feature = "debug")]
         POSITIONS_CONSIDERED.fetch_add(1, AtomicOrdering::SeqCst);
@@ -33,6 +35,8 @@ impl Board {
                 self.end_game_evaluation()
             }
     }
+    /// Recalculates `self.material` and `self.absolute_material`. This
+    /// shouldn't have to be called
     pub fn calculate_material(&mut self) {
         self.material = self.pieces().map(|p| p.value()).sum();
         self.absolute_material =
