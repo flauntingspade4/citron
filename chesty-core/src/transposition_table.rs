@@ -35,6 +35,7 @@ fn piece_index(piece: Piece) -> usize {
 }
 
 #[must_use]
+/// Hashes a given board
 pub fn hash(board: &Board) -> u64 {
     let mut hash = 0;
     for (position, piece) in board.positions_pieces() {

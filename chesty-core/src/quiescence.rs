@@ -9,6 +9,8 @@ const DELTA: i16 = 2 * PAWN_VALUE;
 
 impl Board {
     #[must_use]
+    /// Performs the quiesce search, which does the same as [`Board::iterative_deepening`], 
+    /// except it only generates capturing moves
     pub fn quiesce(&self, mut alpha: i16, beta: i16) -> i16 {
         let stand_pat = self.static_evaluation();
         let stand_pat = if self.to_play == PlayableTeam::White {

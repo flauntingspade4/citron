@@ -25,6 +25,7 @@ pub use transposition_table::hash;
 use piece::{Piece, PieceKind, PAWN_VALUE, QUEEN_VALUE};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+/// A representation of a chess board
 pub struct Board {
     // The array of pieces
     board: [Piece; 64],
@@ -49,20 +50,27 @@ impl Board {
     pub fn new() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0").unwrap()
     }
+    /// Returns an iterator over all of the board's [`Piece`]s (Will contain empty squares)
     pub fn pieces(&self) -> impl Iterator<Item = &Piece> {
         self.board.iter()
     }
+    /// Returns an iterator over all of the board's [`Piece`]s, and their positions
     pub fn positions_pieces(&self) -> impl Iterator<Item = (Position, &Piece)> {
         self.positions_squares().filter(|(_, p)| p.is_piece())
     }
+    /// Returns an iterator over all of the board's [`Piece`]s, and their positions (Will contain
+    /// empty squares)
     pub fn positions_squares(&self) -> impl Iterator<Item = (Position, &Piece)> {
         Position::positions().zip(self.pieces())
     }
     #[must_use]
+    /// Returns who's turn it is to play
     pub const fn to_play(&self) -> PlayableTeam {
         self.to_play
     }
     #[must_use]
+    /// Moves the piece at `from` to `to`, capturing any piece previously at `to`.
+    /// No checks for legal moves are performed here
     pub fn make_move(&self, from: Position, to: Position) -> Option<Self> {
         let mut board = self.clone();
 
@@ -117,6 +125,8 @@ impl Board {
             board
         })
     }
+    /// Makes a null move, just switching who's turn it is
+    /// to play
     pub fn make_null_move(&self) -> Self {
         let mut board = self.clone();
 
@@ -125,6 +135,8 @@ impl Board {
         board
     }
     #[must_use]
+    /// Attempts to generate a [`Board`] from a given
+    /// input string
     pub fn from_fen(fen: &str) -> Option<Self> {
         use PlayableTeam::{Black, White};
 
@@ -261,8 +273,11 @@ impl Debug for Board {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// A playable team, either `White` or `Black`
 pub enum PlayableTeam {
+    /// The white team
     White,
+    /// The black team
     Black,
 }
 
@@ -303,14 +318,19 @@ impl Not for PlayableTeam {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A team, can be `White`, `Black`, or `Neither`
 pub enum Team {
+    /// The white team
     White,
+    /// The black team
     Black,
+    /// Neither team
     Neither,
 }
 
 impl Team {
     #[must_use]
+    /// Compares `self` and `other`, returning the [`TeamComparison`] between them
     pub const fn compare(&self, other: &Self) -> TeamComparison {
         match (self, other) {
             (Team::White, Team::White) | (Team::Black, Team::Black) => TeamComparison::Same,
@@ -355,6 +375,7 @@ impl Display for Team {
     }
 }
 
+/// A way of comparing teams
 pub enum TeamComparison {
     /// Both teams were the same
     Same,
