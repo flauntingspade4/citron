@@ -661,17 +661,16 @@ const fn init_rays() -> [[u64; 8]; 64] {
     rays
 }
 
-const fn north_west(board: u64, n: u64) -> u64 {
-    let mut new_board = board;
+const fn north_west(mut board: u64, n: u64) -> u64 {
     let mut i = 0;
 
     while i < n {
-        new_board = (new_board >> 1) & (!MASK_FILE[7]);
+        board = (board >> 1) & (!MASK_FILE[7]);
 
         i += 1;
     }
 
-    new_board
+    board
 }
 
 const fn north_east(board: u64, n: u64) -> u64 {
