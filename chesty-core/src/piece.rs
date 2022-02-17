@@ -1,6 +1,6 @@
 use core::fmt::Display;
 
-use crate::{PlayableTeam, Team};
+use crate::Team;
 
 pub const PAWN_VALUE: i16 = 100;
 const ROOK_VALUE: i16 = 5 * PAWN_VALUE;
@@ -133,6 +133,17 @@ impl PieceKind {
             Self::Queen,
             Self::King,
         ]
+    }
+    pub fn value(&self) -> i16 {
+        match self {
+            PieceKind::Pawn => PAWN_VALUE,
+            PieceKind::Rook => ROOK_VALUE,
+            PieceKind::Knight => KNIGHT_VALUE,
+            PieceKind::Bishop => BISHOP_VALUE,
+            PieceKind::Queen => QUEEN_VALUE,
+            PieceKind::King => KING_VALUE,
+            PieceKind::None => 0,
+        }
     }
 }
 

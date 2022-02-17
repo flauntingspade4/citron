@@ -6,13 +6,13 @@ use core::{
     ops::Not,
 };
 
-// pub mod analysis;
-// mod evaluation;
+pub mod analysis;
+mod evaluation;
 // mod heatmap;
-// mod killer;
+mod killer;
 pub mod magic;
 mod move_gen;
-// mod move_ordering;
+mod move_ordering;
 // pub mod pgn;
 pub mod piece;
 mod position;
@@ -74,10 +74,11 @@ impl Board {
         self.to_play
     }
     #[must_use]
-    pub fn make_move(&self, from: Position, to: Position) -> Option<Self> {
+    pub fn make_move(&self, piece: Piece, from: Position, to: Position) -> Option<Self> {
         let mut board = self.clone();
 
-        board.make_move(from, to);
+        board.remove_piece(piece, from);
+        board.add_piece(piece, to);
 
         board.to_play = !board.to_play;
         board.turn += 1;
@@ -85,9 +86,9 @@ impl Board {
         Some(board)
     }
     pub fn add_piece(&mut self, piece: Piece, position: Position) {
-        let squareIndex = position.index() as u64;
+        let square_index = position.index() as u64;
 
-        let square = 1 << squareIndex;
+        let square = 1 << square_index;
 
         self.pieces[piece.team() as usize][piece.kind() as usize] |= square;
         self.all_pieces[piece.team() as usize] |= square;

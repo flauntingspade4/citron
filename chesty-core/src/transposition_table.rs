@@ -1,6 +1,6 @@
 use std::{collections::HashMap, lazy::SyncLazy};
 
-use crate::{Board, PlayableTeam, Position};
+use crate::{analysis::Node, move_gen::Move, Position};
 
 use rand::{Fill, RngCore};
 
@@ -19,15 +19,15 @@ pub(crate) static ZOBRIST_KEYS: SyncLazy<([[u64; 12]; 64], u64)> = SyncLazy::new
 #[derive(Debug)]
 pub struct TranspositionEntry {
     pub depth: u8,
-    // pub evaluation: Node,
-    pub best_move: (Position, Position),
+    pub evaluation: Node,
+    pub best_move: Move,
 }
 
 impl TranspositionEntry {
-    pub const fn new(depth: u8, best_move: (Position, Position)) -> Self {
+    pub const fn new(depth: u8, evaluation: Node, best_move: Move) -> Self {
         Self {
             depth,
-            // evaluation,
+            evaluation,
             best_move,
         }
     }

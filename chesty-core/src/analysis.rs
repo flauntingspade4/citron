@@ -5,8 +5,8 @@ use crate::{
     move_ordering::move_ordering,
     piece::KING_VALUE,
     position::{position_to_u16, u16_to_position},
-    transposition_table::{hash, TranspositionEntry, TranspositionTable},
-    Board,
+    transposition_table::{TranspositionEntry, TranspositionTable},
+    Board, MoveGen,
 };
 
 const ASPIRATION_WINDOW: i16 = 25;
@@ -31,13 +31,13 @@ impl Node {
 
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
-        if let Some(best) = transposition_table.get(&hash(&starting_board)) {
-            let (from, to) = best.best_move;
+        if let Some(best) = transposition_table.get(&starting_board.hash) {
+            let (from, to) = best.best_move.from_to();
             println!(
                 "Best move in position: ({}) ({}) {:?}",
                 from, to, best.evaluation
             );
-            starting_board = starting_board.make_move(from, to).unwrap();
+            starting_board = starting_board.make_move(best.played_move).unwrap();
             println!("{}", starting_board);
             println!("{:?}", starting_board);
             println!("{:?}", *best);
@@ -61,9 +61,6 @@ impl Board {
         let mut killer_table = Vec::new();
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
-        #[cfg(feature = "debug")]
-        let bar = indicatif::ProgressBar::new(depth as u64);
-
         for depth in 0..=depth {
             for i in 0.. {
                 let eval = self.evaluate_private(
@@ -84,12 +81,7 @@ impl Board {
                     break;
                 }
             }
-            #[cfg(feature = "debug")]
-            bar.inc(1);
         }
-
-        #[cfg(feature = "debug")]
-        bar.finish();
 
         transposition_table
     }
@@ -122,12 +114,11 @@ impl Board {
         previous_null: bool,
     ) -> i16 {
         if depth == 0 {
-            return self.quiesce(alpha, beta, ply);
+            // return self.quiesce(alpha, beta, ply);
+            return self.static_evaluation(ply);
         }
 
-        let hash = hash(self);
-
-        if let Some(t) = transposition_table.get(&hash) {
+        if let Some(t) = transposition_table.get(&self.hash) {
             if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
@@ -159,29 +150,22 @@ impl Board {
         let mut best_evaluation = -KING_VALUE;
         let mut pv_search = true;
 
-        let mut moves = Vec::with_capacity(BRANCHING_FACTOR);
-
-        for (position, piece) in self
-            .positions_pieces()
-            .filter(|(_, p)| p.team() == self.to_play.into())
-        {
-            piece.legal_moves(position, self, &mut moves);
-        }
+        let mut moves = MoveGen::new(self).into_inner();
 
         move_ordering(
             self,
             ply,
             &mut moves,
             (transposition_table, killer_table),
-            hash,
+            self.hash,
         );
 
         // Multi-cut
         if depth >= 3 {
             let mut c = 0;
 
-            if let Err(multi_cut) = moves.iter().take(MULTICUT_M).try_for_each(|(from, to, _)| {
-                let possible_board = self.make_move(*from, *to).unwrap();
+            if let Err(multi_cut) = moves.iter().take(MULTICUT_M).try_for_each(|possible_move| {
+                let possible_board = self.make_move(possible_move).unwrap();
 
                 let eval = -possible_board.evaluate_private(
                     depth - 3,
@@ -209,23 +193,23 @@ impl Board {
             moves
                 .into_iter()
                 .enumerate()
-                .try_for_each(|(index, (from, to, _))| {
+                .try_for_each(|(index, possible_move)| {
                     if self[to].piece_value() == KING_VALUE {
                         // If the first move considered is a capture of a king
                         if ply == 0 {
                             transposition_table.insert(
-                                hash,
+                                self.hash,
                                 TranspositionEntry::new(
                                     depth,
                                     Node::PvNode(self[to].value()),
-                                    (from, to),
+                                    possible_move,
                                 ),
                             );
                         }
                         return Err((KING_VALUE, from, to));
                     }
 
-                    let possible_board = self.make_move(from, to).unwrap();
+                    let possible_board = self.make_move(possible_move).unwrap();
 
                     let score = if index > 3 && depth >= 3 && best_move == 0 {
                         let eval = -possible_board.evaluate_private(
@@ -301,7 +285,7 @@ impl Board {
             let transposition_entry =
                 TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), (from, to));
 
-            match transposition_table.entry(hash) {
+            match transposition_table.entry(self.hash) {
                 Entry::Occupied(mut entry) => {
                     if entry.get().depth <= depth {
                         entry.insert(transposition_entry);
@@ -325,7 +309,7 @@ impl Board {
             u16_to_position(best_move),
         );
 
-        match transposition_table.entry(hash) {
+        match transposition_table.entry(self.hash) {
             Entry::Occupied(mut entry) => {
                 if entry.get().depth <= depth {
                     entry.insert(transposition_entry);

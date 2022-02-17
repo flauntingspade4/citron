@@ -8,8 +8,8 @@ pub struct KillerMoves {
 }
 
 impl KillerMoves {
-    pub fn contains_move(&self, from: Position, to: Position) -> bool {
-        self.moves.contains(&position_to_u16((from, to)))
+    pub fn contains_move(&self, positions: (Position, Position)) -> bool {
+        self.moves.contains(&position_to_u16(positions))
     }
     pub fn add_move(&mut self, from: Position, to: Position) {
         self.moves.insert(position_to_u16((from, to)));
