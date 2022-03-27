@@ -27,6 +27,7 @@ pub fn bishop_attacks(position: Position, mut blockers: u64) -> u64 {
     blockers &= BISHOP_MASKS[square];
     BISHOP_ATTACKS[square]
         [((blockers * BISHOP_MAGICS[square]) >> (64 - BISHOP_INDEX_BITS[square])) as usize]
+        & !blockers
 }
 
 #[must_use]
@@ -37,6 +38,7 @@ pub fn rook_attacks(position: Position, mut blockers: u64) -> u64 {
 
     ROOK_ATTACKS[square]
         [((blockers * ROOK_MAGICS[square]) >> (64 - ROOK_INDEX_BITS[square])) as usize]
+        & !blockers
 }
 
 #[must_use]
