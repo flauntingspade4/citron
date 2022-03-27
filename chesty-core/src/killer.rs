@@ -1,17 +1,18 @@
 use std::collections::HashSet;
 
-use crate::{position::position_to_u16, Position};
+use crate::Position;
 
+/// A [`HashSet`] of [Position]s, existing for the killer moves optimization
 #[derive(Clone, Debug, Default)]
 pub struct KillerMoves {
-    moves: HashSet<u16>,
+    moves: HashSet<(Position, Position)>,
 }
 
 impl KillerMoves {
-    pub fn contains_move(&self, positions: (Position, Position)) -> bool {
-        self.moves.contains(&position_to_u16(positions))
+    pub fn contains_move(&self, possible_move: (Position, Position)) -> bool {
+        self.moves.contains(&possible_move)
     }
-    pub fn add_move(&mut self, from: Position, to: Position) {
-        self.moves.insert(position_to_u16((from, to)));
+    pub fn add_move(&mut self, possible_move: (Position, Position)) {
+        self.moves.insert(possible_move);
     }
 }

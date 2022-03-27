@@ -3,13 +3,13 @@ use std::collections::hash_map::Entry;
 use crate::{
     killer::KillerMoves,
     move_ordering::move_ordering,
-    piece::KING_VALUE,
-    position::{position_to_u16, u16_to_position},
+    piece::{PieceKind, KING_VALUE},
     transposition_table::{TranspositionEntry, TranspositionTable},
     Board, MoveGen,
 };
 
 const ASPIRATION_WINDOW: i16 = 25;
+const INF: i16 = std::i16::MAX;
 
 const MULTICUT_M: usize = 5;
 const MULTICUT_C: usize = 2;
@@ -22,6 +22,7 @@ pub enum Node {
 }
 
 impl Node {
+    #[must_use]
     pub const fn into_inner(self) -> i16 {
         match self {
             Self::PvNode(s) | Self::AllNode(s) | Self::CutNode(s) => s,
@@ -37,7 +38,7 @@ pub fn explore_line(mut starting_board: Board, transposition_table: &Transpositi
                 "Best move in position: ({}) ({}) {:?}",
                 from, to, best.evaluation
             );
-            starting_board = starting_board.make_move(best.played_move).unwrap();
+            starting_board = starting_board.make_move(&best.best_move).unwrap();
             println!("{}", starting_board);
             println!("{:?}", starting_board);
             println!("{:?}", *best);
@@ -54,11 +55,12 @@ impl Board {
     }
     #[must_use]
     pub fn iterative_deepening_ply(&self, depth: u8) -> TranspositionTable {
-        let mut beta = KING_VALUE + 1;
-        let mut alpha = -KING_VALUE - 1;
+        let mut beta = INF;
+        let mut alpha = -INF;
 
         let mut transposition_table = TranspositionTable::new();
-        let mut killer_table = Vec::new();
+        let mut killer_table = Vec::with_capacity(depth as usize);
+
         killer_table.resize_with(depth as usize, KillerMoves::default);
 
         for depth in 0..=depth {
@@ -85,25 +87,6 @@ impl Board {
 
         transposition_table
     }
-    #[must_use]
-    pub fn evaluate(&self, depth: u8) -> TranspositionTable {
-        self.evaluate_ply(depth * 2)
-    }
-    #[must_use]
-    pub fn evaluate_ply(&self, depth: u8) -> TranspositionTable {
-        let beta = KING_VALUE + 1;
-        let alpha = -KING_VALUE - 1;
-
-        let mut transposition_table = TranspositionTable::new();
-        let mut killer_table = Vec::new();
-        killer_table.resize_with(depth as usize, KillerMoves::default);
-
-        let tables = (&mut transposition_table, killer_table.as_mut_slice());
-
-        self.evaluate_private(depth, 0, alpha, beta, tables, false);
-
-        transposition_table
-    }
     fn evaluate_private(
         &self,
         depth: u8,
@@ -114,8 +97,7 @@ impl Board {
         previous_null: bool,
     ) -> i16 {
         if depth == 0 {
-            // return self.quiesce(alpha, beta, ply);
-            return self.static_evaluation(ply);
+            return self.quiesce(alpha, beta);
         }
 
         if let Some(t) = transposition_table.get(&self.hash) {
@@ -127,8 +109,7 @@ impl Board {
         }
 
         // Null move
-        if !self.in_endgame() && depth > 2 && !previous_null && self.static_evaluation(ply) >= beta
-        {
+        if !self.in_endgame() && depth > 2 && !previous_null && self.static_evaluation() >= beta {
             let board = self.make_null_move();
 
             let value = -board.evaluate_private(
@@ -145,15 +126,12 @@ impl Board {
             }
         }
 
-        // 0 to represent two empty `Position`s
-        let mut best_move = 0;
-        let mut best_evaluation = -KING_VALUE;
+        let mut best_move = None;
         let mut pv_search = true;
 
         let mut moves = MoveGen::new(self).into_inner();
 
         move_ordering(
-            self,
             ply,
             &mut moves,
             (transposition_table, killer_table),
@@ -189,29 +167,29 @@ impl Board {
             }
         }
 
-        if let Err((beta_cutoff, from, to)) =
+        if let Err((beta_cutoff, possible_move)) =
             moves
                 .into_iter()
                 .enumerate()
                 .try_for_each(|(index, possible_move)| {
-                    if self[to].piece_value() == KING_VALUE {
-                        // If the first move considered is a capture of a king
+                    // If the move considered is the capture of a king
+                    if possible_move.captured_piece_kind() == PieceKind::King {
                         if ply == 0 {
                             transposition_table.insert(
                                 self.hash,
                                 TranspositionEntry::new(
                                     depth,
-                                    Node::PvNode(self[to].value()),
-                                    possible_move,
+                                    Node::PvNode(KING_VALUE),
+                                    possible_move.clone(),
                                 ),
                             );
                         }
-                        return Err((KING_VALUE, from, to));
+                        return Err((KING_VALUE, possible_move));
                     }
 
-                    let possible_board = self.make_move(possible_move).unwrap();
+                    let possible_board = self.make_move(&possible_move).unwrap();
 
-                    let score = if index > 3 && depth >= 3 && best_move == 0 {
+                    let score = if index > 3 && depth >= 3 && best_move.is_none() {
                         let eval = -possible_board.evaluate_private(
                             depth - 3,
                             ply + 1,
@@ -267,15 +245,15 @@ impl Board {
 
                     if score > alpha {
                         if score >= beta {
-                            if self[to].value() == 0 {
-                                killer_table[ply as usize].add_move(from, to);
+                            if possible_move.captured_piece_kind() == PieceKind::None {
+                                killer_table[ply as usize].add_move(possible_move.from_to());
                             }
 
-                            return Err((beta, from, to));
+                            return Err((beta, possible_move));
                         }
+
                         alpha = score;
-                        best_evaluation = score;
-                        best_move = position_to_u16((from, to));
+                        best_move = Some(possible_move);
                         pv_search = false;
                     }
 
@@ -283,7 +261,7 @@ impl Board {
                 })
         {
             let transposition_entry =
-                TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), (from, to));
+                TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), possible_move);
 
             match transposition_table.entry(self.hash) {
                 Entry::Occupied(mut entry) => {
@@ -299,24 +277,19 @@ impl Board {
             return beta_cutoff;
         };
 
-        let transposition_entry = TranspositionEntry::new(
-            depth,
-            if best_move == 0 {
-                Node::AllNode(best_evaluation)
-            } else {
-                Node::PvNode(alpha)
-            },
-            u16_to_position(best_move),
-        );
+        if let Some(best_move) = best_move {
+            let transposition_entry =
+                TranspositionEntry::new(depth, Node::PvNode(alpha), best_move);
 
-        match transposition_table.entry(self.hash) {
-            Entry::Occupied(mut entry) => {
-                if entry.get().depth <= depth {
+            match transposition_table.entry(self.hash) {
+                Entry::Occupied(mut entry) => {
+                    if entry.get().depth <= depth {
+                        entry.insert(transposition_entry);
+                    }
+                }
+                Entry::Vacant(entry) => {
                     entry.insert(transposition_entry);
                 }
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(transposition_entry);
             }
         }
 
@@ -324,6 +297,7 @@ impl Board {
     }
 }
 
+/*
 #[test]
 fn good_test() {
     let board =
@@ -484,3 +458,4 @@ fn fight_self() {
         fast_to_play = !fast_to_play;
     }
 }
+*/

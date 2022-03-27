@@ -9,6 +9,7 @@ const BISHOP_VALUE: i16 = 3 * PAWN_VALUE + 25;
 pub const QUEEN_VALUE: i16 = 9 * PAWN_VALUE;
 pub const KING_VALUE: i16 = 50 * PAWN_VALUE;
 
+/// An enum representing all the different possible pieces
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Piece {
@@ -28,7 +29,9 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn new(team: Team, kind: PieceKind) -> Self {
+    /// Create a piece based off it's [`Team`] and [`PieceKind`]
+    #[must_use]
+    pub const fn new(team: Team, kind: PieceKind) -> Self {
         match (team, kind) {
             (Team::White, PieceKind::Pawn) => Self::WhitePawn,
             (Team::White, PieceKind::Rook) => Self::WhiteRook,
@@ -45,13 +48,17 @@ impl Piece {
             _ => Self::Empty,
         }
     }
+    /// Returns true if the variant is `Piece::Empty`
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         *self == Self::Empty
     }
+    #[must_use]
     pub fn is_piece(&self) -> bool {
         !self.is_empty()
     }
-    pub fn kind(&self) -> PieceKind {
+    #[must_use]
+    pub const fn kind(&self) -> PieceKind {
         match self {
             Self::WhitePawn | Self::BlackPawn => PieceKind::Pawn,
             Self::WhiteKnight | Self::BlackKnight => PieceKind::Knight,
@@ -62,20 +69,21 @@ impl Piece {
             Self::Empty => PieceKind::None,
         }
     }
-    pub fn team(&self) -> Team {
+    #[must_use]
+    pub const fn team(&self) -> Team {
         match self {
-            Piece::WhitePawn => Team::White,
-            Piece::WhiteKnight => Team::White,
-            Piece::WhiteBishop => Team::White,
-            Piece::WhiteRook => Team::White,
-            Piece::WhiteQueen => Team::White,
-            Piece::WhiteKing => Team::White,
-            Piece::BlackPawn => Team::Black,
-            Piece::BlackKnight => Team::Black,
-            Piece::BlackBishop => Team::Black,
-            Piece::BlackRook => Team::Black,
-            Piece::BlackQueen => Team::Black,
-            Piece::BlackKing => Team::Black,
+            Piece::WhitePawn
+            | Piece::WhiteKnight
+            | Piece::WhiteBishop
+            | Piece::WhiteRook
+            | Piece::WhiteQueen
+            | Piece::WhiteKing => Team::White,
+            Piece::BlackPawn
+            | Piece::BlackKnight
+            | Piece::BlackBishop
+            | Piece::BlackRook
+            | Piece::BlackQueen
+            | Piece::BlackKing => Team::Black,
             Piece::Empty => Team::Neither,
         }
     }
@@ -105,7 +113,7 @@ impl Display for Piece {
                 Self::BlackBishop => "♗",
                 Self::BlackQueen => "♕",
                 Self::BlackKing => "♔",
-                Self::Empty => panic!("this should not happen"),
+                Self::Empty => " ",
             }
         )
     }
@@ -125,7 +133,9 @@ pub enum PieceKind {
 }
 
 impl PieceKind {
-    pub fn kinds() -> [Self; 5] {
+    /// Returns an array of different kind of piece, without the pawn
+    #[must_use]
+    pub const fn kinds_no_pawn() -> [Self; 5] {
         [
             Self::Rook,
             Self::Knight,
@@ -134,7 +144,32 @@ impl PieceKind {
             Self::King,
         ]
     }
-    pub fn value(&self) -> i16 {
+    /// Returns an array of different kind of piece, without the pawn
+    #[must_use]
+    pub const fn kinds_no_king() -> [Self; 5] {
+        [
+            Self::Pawn,
+            Self::Rook,
+            Self::Knight,
+            Self::Bishop,
+            Self::Queen,
+        ]
+    }
+    /// Returns an array of different kind of piece
+    #[must_use]
+    pub const fn kinds() -> [Self; 6] {
+        [
+            Self::Pawn,
+            Self::Rook,
+            Self::Knight,
+            Self::Bishop,
+            Self::Queen,
+            Self::King,
+        ]
+    }
+    /// Returns the value of the the variant
+    #[must_use]
+    pub const fn value(&self) -> i16 {
         match self {
             PieceKind::Pawn => PAWN_VALUE,
             PieceKind::Rook => ROOK_VALUE,

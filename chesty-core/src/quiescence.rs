@@ -1,16 +1,15 @@
 use crate::{
-    analysis::BRANCHING_FACTOR,
     move_ordering::quiescence_move_ordering,
-    piece::{KING_VALUE, PAWN_VALUE},
-    Board, PlayableTeam,
+    piece::{PieceKind, KING_VALUE, PAWN_VALUE},
+    Board, MoveGen, PlayableTeam,
 };
 
 const DELTA: i16 = 2 * PAWN_VALUE;
 
 impl Board {
     #[must_use]
-    pub fn quiesce(&self, mut alpha: i16, beta: i16, ply: u8) -> i16 {
-        let stand_pat = self.static_evaluation(ply);
+    pub fn quiesce(&self, mut alpha: i16, beta: i16) -> i16 {
+        let stand_pat = self.static_evaluation();
         let stand_pat = if self.to_play == PlayableTeam::White {
             stand_pat
         } else {
@@ -25,37 +24,40 @@ impl Board {
             alpha = stand_pat;
         }
 
-        let mut moves = Vec::with_capacity(BRANCHING_FACTOR);
+        let mut moves = MoveGen::new(self).into_inner();
 
-        for (position, piece) in self
-            .positions_pieces()
-            .filter(|(_, p)| p.team() == self.to_play.into())
-        {
-            piece.quiescence_moves(position, self, &mut moves);
-        }
+        quiescence_move_ordering(
+            &mut moves,
+            // (transposition_table, killer_table),
+            // self.hash,
+        );
 
-        quiescence_move_ordering(self, &mut moves);
-
-        if let Err(beta_cutoff) = moves.into_iter().try_for_each(|(from, to, _)| {
-            if self[to].piece_value() == KING_VALUE {
-                return Err(KING_VALUE);
-            }
-
-            if self.in_endgame() || stand_pat + DELTA + self[to].piece_value() > alpha {
-                let possible_board = self.make_move(from, to).unwrap();
-
-                let score = -possible_board.quiesce(-beta, -alpha, ply + 1);
-
-                if score > alpha {
-                    if score >= beta {
-                        return Err(beta);
-                    }
-                    alpha = score;
+        if let Err(beta_cutoff) = moves
+            .into_iter()
+            .filter(|possible_move| possible_move.captured_piece_kind() != PieceKind::None)
+            .try_for_each(|possible_move| {
+                if possible_move.captured_piece_kind() == PieceKind::King {
+                    return Err(KING_VALUE);
                 }
-            }
 
-            Ok(())
-        }) {
+                if self.in_endgame()
+                    || stand_pat + DELTA + possible_move.captured_piece_kind().value() > alpha
+                {
+                    let possible_board = self.make_move(&possible_move).unwrap();
+
+                    let score = -possible_board.quiesce(-beta, -alpha);
+
+                    if score > alpha {
+                        if score >= beta {
+                            return Err(beta);
+                        }
+                        alpha = score;
+                    }
+                }
+
+                Ok(())
+            })
+        {
             return beta_cutoff;
         };
 

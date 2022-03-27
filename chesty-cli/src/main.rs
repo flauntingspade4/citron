@@ -1,9 +1,10 @@
 // use chesty_core::{explore_line, hash, Board, Position};
 
+use chesty_core::{analysis::explore_line, move_gen::Move, Board, Position};
 use clap::{App, Arg, SubCommand};
 
 fn main() {
-    /*let matches = App::new("chesty-cli")
+    let matches = App::new("chesty-cli")
         .version("0.1")
         .author("Elliot W")
         .subcommand(
@@ -63,13 +64,12 @@ fn main() {
             if t.is_present("explore") {
                 explore_line(board, &table);
             } else {
-                let best = table.get(&hash(&board)).unwrap();
+                let best = table.get(&board.hash()).unwrap();
 
-                let (from, to) = best.best_move;
+                // let (from, to) = best.best_move;
                 println!(
-                    "Best move in position: ({}) ({}) {}",
-                    from,
-                    to,
+                    "Best move in position: {:?} {}",
+                    best.best_move,
                     best.evaluation.into_inner() as f64 / 100.
                 );
             }
@@ -86,27 +86,33 @@ fn main() {
                 .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0");
             let mut board = Board::from_fen(fen).unwrap();
 
+            println!("{} {}", board.material, board.absolute_material);
+
             loop {
                 let eval = board.iterative_deepening_ply(depth);
-                let hash = hash(&board);
-                let best = eval.get(&hash).unwrap();
-                let (from, to) = best.best_move;
+                let best = eval.get(&board.hash()).unwrap();
                 println!(
-                    "({}) ({}) {}",
-                    from,
-                    to,
+                    "{:?} {}",
+                    best.best_move,
                     best.evaluation.into_inner() as f64 / 100.
                 );
 
-                board = board.make_move(from, to).unwrap();
+                board = board.make_move(&best.best_move).unwrap();
 
                 println!("{}", board);
 
                 let (from, to) = get_positions();
 
-                board = board.make_move(from, to).unwrap();
+                let played_move = Move::new(
+                    from,
+                    to,
+                    board.kind_at(board.to_play(), from),
+                    board.kind_at(!board.to_play(), to),
+                );
 
-                println!("{}", board);
+                board = board.make_move(&played_move).unwrap();
+
+                println!("{:?}", board);
             }
         }
         _ => panic!(),
@@ -134,5 +140,5 @@ fn get_positions() -> (Position, Position) {
                 }
             }
         }
-    }*/
+    }
 }

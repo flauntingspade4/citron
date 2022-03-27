@@ -6,10 +6,37 @@ pub struct Position(u8);
 impl Position {
     #[must_use]
     pub const fn new(x: u8, y: u8) -> Self {
-        Self((x << 3) + y)
+        Self((y << 3) + x)
     }
-    pub(crate) const fn from_u8(position: u8) -> Self{ 
+    pub(crate) const fn from_u8(position: u8) -> Self {
         Self(position)
+    }
+    #[must_use]
+    pub fn to_uci(&self) -> (char, char) {
+        (
+            match self.x() {
+                0 => 'a',
+                1 => 'b',
+                2 => 'c',
+                3 => 'd',
+                4 => 'e',
+                5 => 'f',
+                6 => 'g',
+                7 => 'h',
+                _ => panic!(),
+            },
+            match self.y() {
+                0 => '1',
+                1 => '2',
+                2 => '3',
+                3 => '4',
+                4 => '5',
+                5 => '6',
+                6 => '7',
+                7 => '8',
+                _ => panic!(),
+            },
+        )
     }
     #[must_use]
     pub fn from_uci(input: &str) -> Option<Self> {
@@ -43,11 +70,11 @@ impl Position {
     }
     #[must_use]
     pub const fn x(&self) -> u8 {
-        self.0 >> 3
+        self.0 & 7
     }
     #[must_use]
     pub const fn y(&self) -> u8 {
-        self.0 & 7
+        self.0 >> 3
     }
     #[must_use]
     pub const fn index(&self) -> u8 {
@@ -55,10 +82,10 @@ impl Position {
     }
     #[must_use]
     pub const fn is_valid(&self) -> bool {
-        self.x() < 8 && self.y() < 8
+        self.0 < 64
     }
     pub fn positions() -> impl Iterator<Item = Self> {
-        (0..64).map(|i| Self(i))
+        (0..64).map(Self)
     }
     #[must_use]
     pub fn checked_add_to(&self, x: i8, y: i8) -> Option<Self> {
@@ -71,6 +98,14 @@ impl Position {
     pub fn checked_translate(&mut self, x: i8, y: i8) -> Option<()> {
         self.checked_add_to(x, y).map(|p| *self = p)
     }
+    #[must_use]
+    pub const fn from_bitmap(bitmap: u64) -> Self {
+        Self(crate::magic::bitscan_forward(bitmap) as u8)
+    }
+    #[must_use]
+    pub const fn to_bitmap(&self) -> u64 {
+        1 << self.0
+    }
 }
 
 impl Display for Position {
@@ -79,13 +114,13 @@ impl Display for Position {
     }
 }
 
-pub fn position_to_u16(positions: (Position, Position)) -> u16 {
+/*pub fn position_to_u16(positions: (Position, Position)) -> u16 {
     unsafe { core::mem::transmute(positions) }
 }
 
 pub fn u16_to_position(positions: u16) -> (Position, Position) {
     unsafe { core::mem::transmute(positions) }
-}
+}*/
 
 #[test]
 fn move_test() {
@@ -101,4 +136,7 @@ fn move_test() {
 fn uci_test() {
     let position = Position::from_uci("e4").unwrap();
     assert_eq!(position, Position::new(4, 3));
+
+    let position = Position::from_u8(63);
+    assert_eq!(position.to_uci(), ('h', '8'))
 }

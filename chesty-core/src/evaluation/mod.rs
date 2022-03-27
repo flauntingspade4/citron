@@ -8,7 +8,7 @@ mod mid_game;
 use core::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::{
-    piece::{KING_VALUE, PAWN_VALUE},
+    piece::{PieceKind, PAWN_VALUE},
     Board,
 };
 
@@ -19,7 +19,7 @@ const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 125;
 
 impl Board {
     #[must_use]
-    pub fn static_evaluation(&self, ply: u8) -> i16 {
+    pub fn static_evaluation(&self) -> i16 {
         #[cfg(feature = "debug")]
         POSITIONS_CONSIDERED.fetch_add(1, AtomicOrdering::SeqCst);
 
@@ -32,13 +32,17 @@ impl Board {
             } else {
                 self.end_game_evaluation()
             }
-            - ply as i16
     }
     pub fn calculate_material(&mut self) {
-        todo!("material calculation")
-        /*self.material = self.pieces().map(|p| p.value()).sum();
-        self.absolute_material =
-            self.pieces().map(|p| p.piece_value()).sum::<i16>() - 2 * KING_VALUE;*/
+        for kind in PieceKind::kinds_no_king() {
+            self.material += self.pieces[0][kind as usize].count_ones() as i16 * kind.value();
+            self.absolute_material +=
+                self.pieces[0][kind as usize].count_ones() as i16 * kind.value();
+
+            self.material -= self.pieces[1][kind as usize].count_ones() as i16 * kind.value();
+            self.absolute_material +=
+                self.pieces[1][kind as usize].count_ones() as i16 * kind.value();
+        }
     }
 }
 

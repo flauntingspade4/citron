@@ -20,6 +20,37 @@ impl Piece {
     }
 }
 
+pub const HEATMAPS: [[&[(u64, i16)]; 2]; 6] = [
+    [WHITE_PAWN_HEATMAPS, BLACK_PAWN_HEATMAPS],
+    [&[], &[]],
+    [&[], &[]],
+    [&[], &[]],
+    [&[], &[]],
+    [&[], &[]],
+];
+
+pub const WHITE_PAWN_HEATMAPS: &[(u64, i16)] = &[
+    (
+        0b00000000_00000000_00000000_00011000_00011000_00000000_00000000_00000000,
+        20,
+    ),
+    (
+        0b00000100_00000100_00000100_00000100_00000100_00000100_00000100_00000100,
+        30,
+    ),
+];
+
+pub const BLACK_PAWN_HEATMAPS: &[(u64, i16)] = &[
+    (
+        0b00000000_00000000_00000000_00001100_00001100_00000000_00000000_00000000,
+        -20,
+    ),
+    (
+        0b00100000_00100000_00100000_00100000_00100000_00100000_00100000_00100000,
+        -30,
+    ),
+];
+
 pub const WHITE_PAWN_HEATMAP: [i16; 64] = [
     0, 0, 0, 0, 0, 0, 30, 40, // a file
     0, 0, 0, 0, 0, 0, 30, 40, // b file
@@ -88,20 +119,18 @@ pub const BLACK_KNIGHT_HEATMAP: [i16; 64] = [
 
 #[test]
 fn positional_value_test() {
-    use crate::PlayableTeam;
-
     assert_eq!(
-        Piece::new(PieceKind::Knight, PlayableTeam::White)
+        Piece::new(Team::White, PieceKind::Knight)
             .positional_value(Position::from_uci("a8").unwrap()),
         WHITE_KNIGHT_HEATMAP[Position::from_uci("a8").unwrap().index() as usize]
     );
     assert_eq!(
-        Piece::new(PieceKind::King, PlayableTeam::White)
+        Piece::new(Team::White, PieceKind::King)
             .positional_value(Position::from_uci("e1").unwrap()),
         0
     );
     assert_eq!(
-        Piece::new(PieceKind::King, PlayableTeam::Black)
+        Piece::new(Team::Black, PieceKind::King)
             .positional_value(Position::from_uci("e8").unwrap()),
         0
     );

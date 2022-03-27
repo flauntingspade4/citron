@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![feature(once_cell, mixed_integer_ops, const_mut_refs)]
+#![feature(once_cell, mixed_integer_ops, const_mut_refs, array_zip)]
 
 use core::{
     fmt::{Debug, Display, Formatter},
@@ -8,37 +8,44 @@ use core::{
 
 pub mod analysis;
 mod evaluation;
-// mod heatmap;
+mod heatmap;
 mod killer;
 pub mod magic;
-mod move_gen;
+pub mod move_gen;
 mod move_ordering;
-// pub mod pgn;
+pub mod pgn;
 pub mod piece;
 mod position;
-// mod quiescence;
+mod quiescence;
 mod transposition_table;
 
-// pub use analysis::explore_line;
+use move_gen::Move;
 pub use position::Position;
-// pub use transposition_table::hash;
 
 pub use move_gen::MoveGen;
-use piece::{Piece, PAWN_VALUE};
+use piece::{Piece, PieceKind, PAWN_VALUE};
 use transposition_table::ZOBRIST_KEYS;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+/// The chess board itself. Most functionality of the engine is
+/// implemented as methods on this struct
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Board {
-    // The array of pieces
+    /// Two arrays of each piece's bitmaps
     pieces: [[u64; 6]; 2],
+    /// Two bitmaps, one for each team
     all_pieces: [u64; 2],
-    attackable: [u64; 2],
-    occupied: u64,
+    /// The team that's turn it is to play
     to_play: PlayableTeam,
     turn: u16,
-    material: i16,
-    absolute_material: i16,
+    /// The material count. A negative count indicates it's in black's favour,
+    /// and a positive in white's
+    pub material: i16,
+    /// The amount of material remaining on the board, excluding any material
+    /// kings may be worth
+    pub absolute_material: i16,
+    /// The position of each side's king
     king_positions: (Position, Position),
+    /// The hash of the current board
     hash: u64,
 }
 
@@ -46,8 +53,6 @@ impl Board {
     const EMPTY_BOARD: Self = Self {
         pieces: [[0; 6]; 2],
         all_pieces: [0; 2],
-        attackable: [0; 2],
-        occupied: 0,
         to_play: PlayableTeam::White,
         turn: 0,
         material: 0,
@@ -60,54 +65,67 @@ impl Board {
     pub fn new() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0").unwrap()
     }
-    /*pub fn pieces(&self) -> impl Iterator<Item = &Piece> {
-        self.board.iter()
-    }
-    pub fn positions_pieces(&self) -> impl Iterator<Item = (Position, &Piece)> {
-        self.positions_squares().filter(|(_, p)| p.is_piece())
-    }
-    pub fn positions_squares(&self) -> impl Iterator<Item = (Position, &Piece)> {
-        Position::positions().zip(self.pieces())
-    }*/
+    /// Returns which side is currently to play
     #[must_use]
     pub const fn to_play(&self) -> PlayableTeam {
         self.to_play
     }
+    /// Makes a [`Move`]
     #[must_use]
-    pub fn make_move(&self, piece: Piece, from: Position, to: Position) -> Option<Self> {
+    pub fn make_move(&self, played_move: &Move) -> Option<Self> {
         let mut board = self.clone();
 
-        board.remove_piece(piece, from);
-        board.add_piece(piece, to);
+        if played_move.captured_piece_kind() != PieceKind::None {
+            if board.to_play == PlayableTeam::White {
+                board.material += played_move.captured_piece_kind().value();
+            } else {
+                board.material -= played_move.captured_piece_kind().value();
+            }
+            board.absolute_material -= played_move.captured_piece_kind().value();
+            board.remove_piece(
+                Piece::new((!self.to_play).into(), played_move.captured_piece_kind()),
+                played_move.to(),
+            );
+        }
+
+        board.move_piece(
+            played_move.moved_piece_kind(),
+            played_move.from(),
+            played_move.to(),
+        );
 
         board.to_play = !board.to_play;
-        board.turn += 1;
+
+        if board.to_play == PlayableTeam::Black {
+            board.hash ^= ZOBRIST_KEYS.1;
+        }
 
         Some(board)
     }
-    pub fn add_piece(&mut self, piece: Piece, position: Position) {
-        let square_index = position.index() as u64;
+    fn move_piece(&mut self, kind: PieceKind, from: Position, to: Position) {
+        let piece = Piece::new(self.to_play.into(), kind);
 
-        let square = 1 << square_index;
+        self.remove_piece(piece, from);
+        self.add_piece(piece, to);
+    }
+    fn add_piece(&mut self, piece: Piece, position: Position) {
+        let square = 1 << position.index();
 
         self.pieces[piece.team() as usize][piece.kind() as usize] |= square;
         self.all_pieces[piece.team() as usize] |= square;
 
-        self.occupied |= square;
-
-        self.attackable[piece.team() as usize] ^= square;
         self.hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
     }
     fn remove_piece(&mut self, piece: Piece, position: Position) {
-        let square = 1 << position.index() as u64;
+        let square = 1 << position.index();
 
         self.pieces[piece.team() as usize][piece.kind() as usize] ^= square;
         self.all_pieces[piece.team() as usize] ^= square;
 
-        self.occupied ^= square;
-        self.attackable[piece.team() as usize] ^= square;
         self.hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
     }
+    /// Makes a null move (Effectively just switching who it is to move)
+    #[must_use]
     pub fn make_null_move(&self) -> Self {
         let mut board = self.clone();
 
@@ -115,6 +133,7 @@ impl Board {
 
         board
     }
+    /// Creates a board from a given FEN
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
         let mut board = Self::EMPTY_BOARD;
@@ -139,11 +158,11 @@ impl Board {
                 'Q' => board.add_piece(Piece::WhiteQueen, pos),
                 'k' => {
                     board.king_positions.1 = pos;
-                    board.add_piece(Piece::BlackKing, pos)
+                    board.add_piece(Piece::BlackKing, pos);
                 }
                 'K' => {
                     board.king_positions.0 = pos;
-                    board.add_piece(Piece::WhiteKing, pos)
+                    board.add_piece(Piece::WhiteKing, pos);
                 }
                 '/' => {
                     if x == 8 {
@@ -183,66 +202,96 @@ impl Board {
         let turn = fen_parts.next()?.parse().ok()?;
 
         board.turn = turn;
-        // board.calculate_material();
+        board.calculate_material();
 
         Some(board)
     }
-    fn moved_king(&mut self, to: Position) {
+    /*fn moved_king(&mut self, to: Position) {
         match self.to_play {
             PlayableTeam::White => self.king_positions.0 = to,
             PlayableTeam::Black => self.king_positions.1 = to,
         }
-    }
+    }*/
     const fn in_endgame(&self) -> bool {
         self.absolute_material <= 24 * PAWN_VALUE
     }
-}
+    #[must_use]
+    pub fn kind_at(&self, team: PlayableTeam, position: Position) -> PieceKind {
+        let bitmap = position.to_bitmap();
 
-/*impl Index<Position> for Board {
-    type Output = Piece;
+        if self.all_pieces[team as usize] & bitmap == 0 {
+            PieceKind::None
+        } else {
+            for (pieces, kind) in self.pieces[team as usize].zip(PieceKind::kinds()) {
+                if pieces & bitmap == bitmap {
+                    return kind;
+                }
+            }
 
-    fn index(&self, index: Position) -> &Self::Output {
-        let index = index.index() as usize;
+            PieceKind::None
+        }
+    }
+    #[must_use]
+    pub fn team_at(&self, position: Position) -> Team {
+        let bitmap = position.to_bitmap();
 
-        &self.board[index]
+        for team in PlayableTeam::teams() {
+            if self.all_pieces[team as usize] & bitmap == bitmap {
+                return team.into();
+            }
+        }
+
+        Team::Neither
+    }
+    #[must_use]
+    pub fn piece_at(&self, position: Position) -> Piece {
+        let bitmap = position.to_bitmap();
+
+        for team in PlayableTeam::teams() {
+            if self.all_pieces[team as usize] & bitmap != 0 {
+                for (pieces, kind) in self.pieces[team as usize].zip(PieceKind::kinds()) {
+                    if pieces & bitmap == bitmap {
+                        return Piece::new(team.into(), kind);
+                    }
+                }
+            }
+        }
+
+        Piece::Empty
+    }
+    /// Returns the hash of the current board
+    #[must_use]
+    pub const fn hash(&self) -> u64 {
+        self.hash
+    }
+    fn get_occupied(&self) -> u64 {
+        self.all_pieces[0] | self.all_pieces[1]
+    }
+    fn get_not_occupied(&self) -> u64 {
+        !self.get_occupied()
     }
 }
 
-impl IndexMut<Position> for Board {
-    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
-        let index = index.index() as usize;
-
-        &mut self.board[index]
-    }
-}*/
-
-/*impl Display for Board {
+impl Display for Board {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         for y in 0..8 {
             for x in 0..8 {
-                write!(
-                    f,
-                    "| {} |",
-                    self.board[Position::new(x, 7 - y).index() as usize]
-                )?;
+                write!(f, "| {} |", self.piece_at(Position::new(x, 7 - y)))?;
             }
             writeln!(f)?;
         }
 
         Ok(())
     }
-}*/
+}
 
-impl Debug for Board {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Board")
-            .field("to_play", &self.to_play)
-            .field("turn", &self.turn)
-            .field("material", &self.material)
-            .finish()
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
+/*
 #[test]
 fn king_position_test() {
     let board = Board::new();
@@ -270,13 +319,21 @@ fn king_position_test() {
             Position::from_uci("e8").unwrap()
         )
     );
-}
+}*/
 
+/// A playable team
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PlayableTeam {
     White,
     Black,
+}
+
+impl PlayableTeam {
+    #[must_use]
+    pub const fn teams() -> [Self; 2] {
+        [Self::White, Self::Black]
+    }
 }
 
 impl Display for PlayableTeam {
@@ -332,6 +389,10 @@ impl Team {
             _ => TeamComparison::None,
         }
     }
+    #[must_use]
+    pub const fn teams() -> [Self; 3] {
+        [Self::White, Self::Black, Self::Neither]
+    }
 }
 
 impl From<PlayableTeam> for Team {
@@ -369,6 +430,7 @@ impl Display for Team {
     }
 }
 
+/// A comparison between two different teams, returned from [`Team::compare`]
 pub enum TeamComparison {
     /// Both teams were the same
     Same,

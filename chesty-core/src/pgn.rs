@@ -1,4 +1,4 @@
-use crate::{piece::PieceKind, Board, PlayableTeam, Position};
+use crate::{move_gen::Move, piece::PieceKind, PlayableTeam};
 
 pub struct Pgn {
     index: usize,
@@ -15,24 +15,14 @@ impl Pgn {
             to_play: PlayableTeam::White,
         }
     }
-    pub fn add_move(&mut self, played_move: (Position, Position), board: &Board) {
-        let played_move = Move {
-            from: played_move.0,
-            to: played_move.1,
-        };
-
+    pub fn add_move(&mut self, played_move: &Move) {
         match self.to_play {
             PlayableTeam::White => {
-                self.moves = format!(
-                    "{} {}. {}",
-                    self.moves,
-                    self.index,
-                    played_move.write(board)
-                );
+                self.moves = format!("{} {}. {}", self.moves, self.index, played_move.write());
                 self.to_play = !self.to_play;
             }
             PlayableTeam::Black => {
-                self.moves = format!("{} {}", self.moves, played_move.write(board));
+                self.moves = format!("{} {}", self.moves, played_move.write());
                 self.to_play = !self.to_play;
                 self.index += 1;
             }
@@ -44,30 +34,25 @@ impl Pgn {
     }
 }
 
-struct Move {
-    from: Position,
-    to: Position,
-}
-
 impl Move {
-    pub fn write(&self, board: &Board) -> String {
-        let (x, y) = position_to_uci(self.to);
-        let (from_x, _) = position_to_uci(self.from);
+    fn write(&self) -> String {
+        let (x, y) = self.to().to_uci();
+        let (from_x, _) = self.from().to_uci();
 
-        let uci = match piece_to_uci(board[self.from].kind()) {
+        let uci = match piece_to_uci(self.moved_piece_kind()) {
             Ok(t) => t,
-            Err(_) => panic!("{}\n({}) ({})", board, self.from, self.to),
+            Err(_) => panic!(),
         };
 
-        if board[self.to].is_piece() {
-            uci.map_or_else(
-                || format!("{}x{}{}", from_x, x, y),
-                |piece_identifier| format!("{}{}x{}{}", piece_identifier, from_x, x, y),
-            )
-        } else {
+        if self.moved_piece_kind() == PieceKind::None {
             uci.map_or_else(
                 || format!("{}{}", x, y),
                 |piece_identifier| format!("{}{}{}{}", piece_identifier, from_x, x, y),
+            )
+        } else {
+            uci.map_or_else(
+                || format!("{}x{}{}", from_x, x, y),
+                |piece_identifier| format!("{}{}x{}{}", piece_identifier, from_x, x, y),
             )
         }
     }
@@ -85,33 +70,7 @@ const fn piece_to_uci(kind: PieceKind) -> Result<Option<char>, ()> {
     })
 }
 
-fn position_to_uci(position: Position) -> (char, char) {
-    (
-        match position.x() {
-            0 => 'a',
-            1 => 'b',
-            2 => 'c',
-            3 => 'd',
-            4 => 'e',
-            5 => 'f',
-            6 => 'g',
-            7 => 'h',
-            _ => panic!(),
-        },
-        match position.y() {
-            0 => '1',
-            1 => '2',
-            2 => '3',
-            3 => '4',
-            4 => '5',
-            5 => '6',
-            6 => '7',
-            7 => '8',
-            _ => panic!(),
-        },
-    )
-}
-
+/*
 #[test]
 fn pgn_gen() {
     let mut board = Board::new();
@@ -136,3 +95,4 @@ fn pgn_gen() {
 
     println!("{}", pgn.finish());
 }
+*/
