@@ -9,6 +9,8 @@ use crate::{
     Board,
 };
 
+const INF: i16 = i16::MAX;
+
 /// The average number of legal moves in any given position
 pub const BRANCHING_FACTOR: usize = 35;
 const ASPIRATION_WINDOW: i16 = 2;
@@ -65,8 +67,8 @@ impl Board {
     #[must_use]
     /// Evaluate using iterative deepening, to a given depth ply
     pub fn iterative_deepening_ply(&self, depth: u8) -> TranspositionTable {
-        let mut beta = KING_VALUE + 1;
-        let mut alpha = -KING_VALUE - 1;
+        let mut beta = INF;
+        let mut alpha = -INF;
 
         let mut transposition_table = TranspositionTable::new();
         let mut killer_table = Vec::new();
@@ -82,8 +84,8 @@ impl Board {
                 false,
             );
             if eval <= alpha || eval >= beta {
-                beta = KING_VALUE + 1;
-                alpha = -KING_VALUE - 1;
+                beta = INF;
+                alpha = -INF;
                 transposition_table.clear();
                 self.evaluate_private(
                     i,
