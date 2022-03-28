@@ -1,6 +1,6 @@
 // use chesty_core::{explore_line, hash, Board, Position};
 
-use chesty_core::{analysis::explore_line, move_gen::Move, Board, Position};
+use citron_core::{analysis::explore_line, move_gen::Move, Board, Position};
 use clap::{App, Arg, SubCommand};
 
 fn main() {

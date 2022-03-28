@@ -1,5 +1,5 @@
 [package]
-name = "chesty-core"
+name = "citron-core"
 version = "0.1.0"
 edition = "2021"
 

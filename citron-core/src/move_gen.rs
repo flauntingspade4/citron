@@ -14,7 +14,7 @@ pub const BRANCHING_FACTOR: usize = 35;
 pub struct Move {
     from: Position,
     to: Position,
-    ordering_value: u16,
+    ordering_value: u32,
     moved_piece_kind: PieceKind,
     captured_piece_kind: PieceKind,
     flags: MoveFlags,
@@ -64,10 +64,10 @@ impl Move {
     pub const fn captured_piece_kind(&self) -> PieceKind {
         self.captured_piece_kind
     }
-    pub(crate) const fn ordering_value(&self) -> &u16 {
+    pub(crate) const fn ordering_value(&self) -> &u32 {
         &self.ordering_value
     }
-    pub(crate) fn ordering_value_mut(&mut self) -> &mut u16 {
+    pub(crate) fn ordering_value_mut(&mut self) -> &mut u32 {
         &mut self.ordering_value
     }
     pub(crate) fn flags_mut(&mut self) -> &mut MoveFlags {
@@ -91,7 +91,7 @@ impl MoveFlags {
         self.0 & 1 == 1
     }
     pub fn set_promotion(&mut self, promotion: bool) {
-        self.0 |= 1 * (promotion as u8)
+        self.0 |= promotion as u8
     }
 }
 
@@ -129,22 +129,17 @@ impl MoveGen {
 fn fucking_cringe() {
     let board = Board::new();
 
-    let moves = MoveGen::new(&board);
+    let moves = MoveGen::new(&board).into_inner();
 
-    for possible_move in moves.into_inner() {
-        println!(
-            "{:?} {:?}",
-            possible_move.from.to_uci(),
-            possible_move.to.to_uci()
-        )
-    }
+    // There should always be 20 legal moves in the starting position
+    assert_eq!(20, moves.len());
 }
 
 impl Board {
     fn gen_white_moves(&self, move_list: &mut Vec<Move>) {
         self.gen_white_pawn_moves(move_list);
 
-        let blockers = self.all_pieces[PlayableTeam::White as usize];
+        let blockers = self.get_occupied();
 
         for kind in PieceKind::kinds_no_pawn() {
             let pieces = self.pieces[PlayableTeam::White as usize][kind as usize];
@@ -283,7 +278,7 @@ impl Board {
     fn gen_black_moves(&self, move_list: &mut Vec<Move>) {
         self.gen_black_pawn_moves(move_list);
 
-        let blockers = self.all_pieces[PlayableTeam::Black as usize];
+        let blockers = self.get_occupied();
 
         for kind in PieceKind::kinds_no_pawn() {
             let pieces = self.pieces[PlayableTeam::Black as usize][kind as usize];
@@ -430,21 +425,15 @@ impl Board {
         move_list: &mut Vec<Move>,
     ) {
         while pieces != 0 {
-            let from = magic::pop_lsb(&mut pieces);
+            let from = Position::from_u8(magic::pop_lsb(&mut pieces) as u8);
 
-            let mut moves =
-                Self::get_attacks_for_square(kind, Position::from_u8(from as u8), blockers);
+            let mut moves = Self::get_attacks_for_square(kind, from, blockers);
 
             while moves != 0 {
-                let to = magic::pop_lsb(&mut moves);
+                let to = Position::from_u8(magic::pop_lsb(&mut moves) as u8);
 
-                if self.team_at(Position::from_u8(to as u8)) != team.into() {
-                    move_list.push(Move::new(
-                        Position::from_u8(from as u8),
-                        Position::from_u8(to as u8),
-                        kind,
-                        self.kind_at(!team, Position::from_bitmap(to)),
-                    ));
+                if self.team_at(to) != self.to_play.into() {
+                    move_list.push(Move::new(from, to, kind, self.kind_at(!team, to)));
                 }
             }
         }

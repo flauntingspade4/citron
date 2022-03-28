@@ -71,7 +71,6 @@ impl Board {
                     alpha,
                     beta,
                     (&mut transposition_table, killer_table.as_mut_slice()),
-                    false,
                 );
                 if eval <= alpha {
                     alpha -= ASPIRATION_WINDOW << (2 * i);
@@ -94,7 +93,6 @@ impl Board {
         mut alpha: i16,
         beta: i16,
         (transposition_table, killer_table): (&mut TranspositionTable, &mut [KillerMoves]),
-        previous_null: bool,
     ) -> i16 {
         if depth == 0 {
             return self.quiesce(alpha, beta);
@@ -105,24 +103,6 @@ impl Board {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
                 }
-            }
-        }
-
-        // Null move
-        if !self.in_endgame() && depth > 2 && !previous_null && self.static_evaluation() >= beta {
-            let board = self.make_null_move();
-
-            let value = -board.evaluate_private(
-                depth.saturating_sub(3),
-                ply,
-                -beta,
-                1 - beta,
-                (transposition_table, killer_table),
-                true,
-            );
-
-            if value >= beta {
-                return value;
             }
         }
 
@@ -151,7 +131,6 @@ impl Board {
                     -beta,
                     -(beta - 1),
                     (transposition_table, killer_table),
-                    false,
                 );
 
                 if eval >= beta {
@@ -196,7 +175,6 @@ impl Board {
                             -beta,
                             -alpha,
                             (transposition_table, killer_table),
-                            false,
                         );
                         if eval > alpha {
                             -possible_board.evaluate_private(
@@ -205,7 +183,6 @@ impl Board {
                                 -beta,
                                 -alpha,
                                 (transposition_table, killer_table),
-                                false,
                             )
                         } else {
                             eval
@@ -217,7 +194,6 @@ impl Board {
                             -beta,
                             -alpha,
                             (transposition_table, killer_table),
-                            false,
                         )
                     } else {
                         let score = -possible_board.evaluate_private(
@@ -226,7 +202,6 @@ impl Board {
                             -(alpha + 1),
                             -alpha,
                             (transposition_table, killer_table),
-                            false,
                         );
 
                         if score > alpha {
@@ -236,7 +211,6 @@ impl Board {
                                 -beta,
                                 -alpha,
                                 (transposition_table, killer_table),
-                                false,
                             )
                         } else {
                             score
@@ -297,7 +271,6 @@ impl Board {
     }
 }
 
-/*
 #[test]
 fn good_test() {
     let board =
@@ -312,8 +285,8 @@ fn good_test() {
 
     let elapsed = start.elapsed().as_millis();
 
-    let best = table.get(&hash(&board)).unwrap();
-    let (from, to) = best.best_move;
+    let best = table.get(&board.hash()).unwrap();
+    let (from, to) = best.best_move.from_to();
 
     println!(
         "{}ms ({}) ({}) {}",
@@ -323,9 +296,9 @@ fn good_test() {
         best.evaluation.into_inner() as f64 / 100.,
     );
 
-    // let starting_board = board.make_move(from, to).unwrap();
+    let starting_board = board.make_move(&best.best_move).unwrap();
 
-    // explore_line(starting_board, &table);
+    explore_line(starting_board, &table);
 
     #[cfg(feature = "debug")]
     println!(
@@ -333,7 +306,7 @@ fn good_test() {
         POSITIONS_CONSIDERED.load(Ordering::SeqCst) / elapsed as usize,
     );
 }
-
+/*
 #[test]
 fn horde() {
     let board = Board::from_fen(

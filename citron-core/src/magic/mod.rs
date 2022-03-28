@@ -25,9 +25,9 @@ pub fn bishop_attacks(position: Position, mut blockers: u64) -> u64 {
     let square = position.index() as usize;
 
     blockers &= BISHOP_MASKS[square];
-    BISHOP_ATTACKS[square]
-        [((blockers * BISHOP_MAGICS[square]) >> (64 - BISHOP_INDEX_BITS[square])) as usize]
-        & !blockers
+
+    BISHOP_ATTACKS[square][((blockers.wrapping_mul(BISHOP_MAGICS[square]))
+        >> (64 - BISHOP_INDEX_BITS[square])) as usize]
 }
 
 #[must_use]
@@ -37,8 +37,7 @@ pub fn rook_attacks(position: Position, mut blockers: u64) -> u64 {
     blockers &= ROOK_MASKS[square];
 
     ROOK_ATTACKS[square]
-        [((blockers * ROOK_MAGICS[square]) >> (64 - ROOK_INDEX_BITS[square])) as usize]
-        & !blockers
+        [((blockers.wrapping_mul(ROOK_MAGICS[square])) >> (64 - ROOK_INDEX_BITS[square])) as usize]
 }
 
 #[must_use]
@@ -158,6 +157,18 @@ const fn init_rays() -> [[u64; 8]; 64] {
     rays
 }
 
+const fn north_east(mut board: u64, n: u64) -> u64 {
+    let mut i = 0;
+
+    while i < n {
+        board = (board << 1) & (!MASK_FILE[0]);
+
+        i += 1;
+    }
+
+    board
+}
+
 const fn north_west(mut board: u64, n: u64) -> u64 {
     let mut i = 0;
 
@@ -170,23 +181,10 @@ const fn north_west(mut board: u64, n: u64) -> u64 {
     board
 }
 
-const fn north_east(board: u64, n: u64) -> u64 {
-    let mut new_board = board;
-    let mut i = 0;
-
-    while i < n {
-        new_board = (new_board >> 1) & (!MASK_FILE[0]);
-
-        i += 1;
-    }
-
-    new_board
-}
-
 const fn row(square: usize) -> u64 {
     (square >> 3) as u64
 }
 
 const fn col(square: usize) -> u64 {
-    (square % 8) as u64
+    (square & 7) as u64
 }

@@ -81,7 +81,9 @@ impl Board {
             } else {
                 board.material -= played_move.captured_piece_kind().value();
             }
+
             board.absolute_material -= played_move.captured_piece_kind().value();
+
             board.remove_piece(
                 Piece::new((!self.to_play).into(), played_move.captured_piece_kind()),
                 played_move.to(),
@@ -109,7 +111,7 @@ impl Board {
         self.add_piece(piece, to);
     }
     fn add_piece(&mut self, piece: Piece, position: Position) {
-        let square = 1 << position.index();
+        let square = position.to_bitmap();
 
         self.pieces[piece.team() as usize][piece.kind() as usize] |= square;
         self.all_pieces[piece.team() as usize] |= square;
@@ -117,7 +119,7 @@ impl Board {
         self.hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
     }
     fn remove_piece(&mut self, piece: Piece, position: Position) {
-        let square = 1 << position.index();
+        let square = position.to_bitmap();
 
         self.pieces[piece.team() as usize][piece.kind() as usize] ^= square;
         self.all_pieces[piece.team() as usize] ^= square;

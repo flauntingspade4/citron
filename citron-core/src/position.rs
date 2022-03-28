@@ -88,18 +88,10 @@ impl Position {
         (0..64).map(Self)
     }
     #[must_use]
-    pub fn checked_add_to(&self, x: i8, y: i8) -> Option<Self> {
-        let (x0, y0) = (self.x(), self.y());
-        let (x, y) = (x0.checked_add_signed(x)?, y0.checked_add_signed(y)?);
-
-        ((0..8).contains(&x) && (0..8).contains(&y)).then(|| Self::new(x as u8, y as u8))
-    }
-    #[must_use]
-    pub fn checked_translate(&mut self, x: i8, y: i8) -> Option<()> {
-        self.checked_add_to(x, y).map(|p| *self = p)
-    }
-    #[must_use]
-    pub const fn from_bitmap(bitmap: u64) -> Self {
+    pub fn from_bitmap(bitmap: u64) -> Self {
+        if bitmap == 0 {
+            println!("Wtaf");
+        }
         Self(crate::magic::bitscan_forward(bitmap) as u8)
     }
     #[must_use]
@@ -113,14 +105,6 @@ impl Display for Position {
         write!(f, "{} {}", self.x(), self.y())
     }
 }
-
-/*pub fn position_to_u16(positions: (Position, Position)) -> u16 {
-    unsafe { core::mem::transmute(positions) }
-}
-
-pub fn u16_to_position(positions: u16) -> (Position, Position) {
-    unsafe { core::mem::transmute(positions) }
-}*/
 
 #[test]
 fn move_test() {
@@ -137,6 +121,24 @@ fn uci_test() {
     let position = Position::from_uci("e4").unwrap();
     assert_eq!(position, Position::new(4, 3));
 
+    let position = Position::from_u8(28);
+    assert_eq!(position.to_uci(), ('e', '4'));
+
+    let position = Position::from_uci("a1").unwrap();
+    assert_eq!(position, Position::new(0, 0));
+
+    let position = Position::from_u8(0);
+    assert_eq!(position.to_uci(), ('a', '1'));
+
+    let position = Position::from_uci("h8").unwrap();
+    assert_eq!(position.to_uci(), ('h', '8'));
+
     let position = Position::from_u8(63);
-    assert_eq!(position.to_uci(), ('h', '8'))
+    assert_eq!(position.to_uci(), ('h', '8'));
+
+    let position = Position::from_uci("b2").unwrap();
+    assert_eq!(position.to_uci(), ('b', '2'));
+
+    let position = Position::from_u8(9);
+    assert_eq!(position.to_uci(), ('b', '2'));
 }

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "chesty-cli",
-    "chesty-core",
+    "citron-cli",
+    "citron-core",
 ]
 
 [profile.release]

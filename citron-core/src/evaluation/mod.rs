@@ -15,7 +15,7 @@ use crate::{
 #[cfg(feature = "debug")]
 pub static POSITIONS_CONSIDERED: AtomicUsize = AtomicUsize::new(0);
 
-const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 125;
+const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 100;
 
 impl Board {
     #[must_use]

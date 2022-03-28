@@ -1,8 +1,8 @@
 [package]
-name = "chesty-cli"
+name = "citron-cli"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 clap = "2.34.0"
-chesty-core = { path = "../chesty-core" }
+citron-core = { path = "../citron-core" }
