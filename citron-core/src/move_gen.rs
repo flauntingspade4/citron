@@ -126,7 +126,7 @@ impl MoveGen {
 }
 
 #[test]
-fn fucking_cringe() {
+fn original_position_moves() {
     let board = Board::new();
 
     let moves = MoveGen::new(&board).into_inner();
