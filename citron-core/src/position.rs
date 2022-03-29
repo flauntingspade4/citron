@@ -114,6 +114,18 @@ fn move_test() {
 
     assert_eq!(position.x(), 0);
     assert_eq!(position.y(), 5);
+
+    assert_eq!(Position::new(5, 0), Position(5));
+
+    let position = Position::new(5, 5);
+
+    assert_eq!(position.x(), 5);
+    assert_eq!(position.y(), 5);
+
+    assert!(Position::new(0, 0).is_valid());
+    assert!(Position::new(2, 3).is_valid());
+    assert!(Position::new(7, 7).is_valid());
+    assert!(!Position::new(9, 12).is_valid());
 }
 
 #[test]

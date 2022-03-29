@@ -71,7 +71,6 @@ impl Board {
         self.to_play
     }
     /// Makes a [`Move`]
-    #[must_use]
     pub fn make_move(&self, played_move: &Move) -> Option<Self> {
         let mut board = self.clone();
 
@@ -85,11 +84,10 @@ impl Board {
             board.absolute_material -= played_move.captured_piece_kind().value();
 
             board.remove_piece(
-                Piece::new((!self.to_play).into(), played_move.captured_piece_kind()),
+                Piece::new((!board.to_play).into(), played_move.captured_piece_kind()),
                 played_move.to(),
             );
         }
-
         board.move_piece(
             played_move.moved_piece_kind(),
             played_move.from(),
@@ -201,9 +199,7 @@ impl Board {
         // Half move clock
         fen_parts.next()?;
 
-        let turn = fen_parts.next()?.parse().ok()?;
-
-        board.turn = turn;
+        board.turn = fen_parts.next()?.parse().ok()?;
         board.calculate_material();
 
         Some(board)

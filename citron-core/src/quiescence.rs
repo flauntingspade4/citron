@@ -26,11 +26,7 @@ impl Board {
 
         let mut moves = MoveGen::new(self).into_inner();
 
-        quiescence_move_ordering(
-            &mut moves,
-            // (transposition_table, killer_table),
-            // self.hash,
-        );
+        quiescence_move_ordering(&mut moves);
 
         if let Err(beta_cutoff) = moves
             .into_iter()
