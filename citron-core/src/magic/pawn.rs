@@ -13,7 +13,7 @@ const fn init_pawn_attacks() -> [[u64; 64]; 2] {
         pawn_attacks[0][i] = ((start << 9) & !MASK_FILE[0]) | ((start << 7) & !MASK_FILE[7]);
         pawn_attacks[1][i] = ((start >> 9) & !MASK_FILE[7]) | ((start >> 7) & !MASK_FILE[0]);
 
-        i += 1
+        i += 1;
     }
 
     pawn_attacks

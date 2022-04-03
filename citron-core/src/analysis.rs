@@ -38,10 +38,14 @@ pub fn explore_line(mut starting_board: Board, transposition_table: &Transpositi
                 "Best move in position: ({}) ({}) {:?}",
                 from, to, best.evaluation
             );
+
             starting_board = starting_board.make_move(&best.best_move).unwrap();
+
+            let (from, to) = best.best_move.from_to();
+            let (fx, fy) = from.to_uci();
+            let (tx, ty) = to.to_uci();
+            println!("{fx}{fy} {tx}{ty}");
             println!("{}", starting_board);
-            println!("{:?}", starting_board);
-            println!("{:?}", *best);
         } else {
             break;
         }
@@ -95,7 +99,7 @@ impl Board {
         (transposition_table, killer_table): (&mut TranspositionTable, &mut [KillerMoves]),
     ) -> i16 {
         if depth == 0 {
-            return self.quiesce(alpha, beta);
+            return self.static_evaluation();
         }
 
         if let Some(t) = transposition_table.get(&self.hash) {
@@ -274,14 +278,14 @@ impl Board {
 #[test]
 fn good_test() {
     let board =
-        Board::from_fen("r1bqkb1r/ppp3pp/2n2p2/3np1N1/2B4P/8/PPPP1PP1/RNBQK2R w KQkq - 0 7")
+        Board::from_fen("r2q1rk1/1p3p1p/1b4p1/pPp2b2/3pn1P1/P2Q4/B1P1NP1P/R1B2RK1 b - - 0 30")
             .unwrap();
 
     println!("{}", board);
 
     let start = std::time::Instant::now();
 
-    let table = board.iterative_deepening(5);
+    let table = board.iterative_deepening_ply(12);
 
     let elapsed = start.elapsed().as_millis();
 
@@ -306,6 +310,7 @@ fn good_test() {
         POSITIONS_CONSIDERED.load(Ordering::SeqCst) / elapsed as usize,
     );
 }
+
 /*
 #[test]
 fn horde() {

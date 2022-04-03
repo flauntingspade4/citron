@@ -81,7 +81,7 @@ impl Board {
                 board.material -= played_move.captured_piece_kind().value();
             }
 
-            board.absolute_material -= played_move.captured_piece_kind().value();
+            // board.absolute_material -= played_move.captured_piece_kind().value();
 
             board.remove_piece(
                 Piece::new((!board.to_play).into(), played_move.captured_piece_kind()),
@@ -204,12 +204,6 @@ impl Board {
 
         Some(board)
     }
-    /*fn moved_king(&mut self, to: Position) {
-        match self.to_play {
-            PlayableTeam::White => self.king_positions.0 = to,
-            PlayableTeam::Black => self.king_positions.1 = to,
-        }
-    }*/
     const fn in_endgame(&self) -> bool {
         self.absolute_material <= 24 * PAWN_VALUE
     }
@@ -262,7 +256,7 @@ impl Board {
     pub const fn hash(&self) -> u64 {
         self.hash
     }
-    fn get_occupied(&self) -> u64 {
+    const fn get_occupied(&self) -> u64 {
         self.all_pieces[0] | self.all_pieces[1]
     }
     fn get_not_occupied(&self) -> u64 {

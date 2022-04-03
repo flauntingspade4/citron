@@ -24,7 +24,7 @@ impl Board {
         POSITIONS_CONSIDERED.fetch_add(1, AtomicOrdering::SeqCst);
 
         self.material
-            // + self.trade_bonus()
+            + self.trade_bonus()
             + if self.turn <= 30 {
                 self.early_game_evaluation()
             } else if self.turn <= 70 {
@@ -50,9 +50,8 @@ impl Board {
                 * kind.value();
         }
     }
-    /*
     /// If a side is up material, they wish to get the
-    /// remaining amount of material on the board as low as
+    /// recrateing amount of material on the board as low as
     /// possible
     fn trade_bonus(&self) -> i16 {
         match self.material.cmp(&0) {
@@ -69,5 +68,5 @@ impl Board {
                 }
             }
         }
-    }*/
+    }
 }

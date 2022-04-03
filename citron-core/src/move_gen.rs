@@ -14,7 +14,7 @@ pub const BRANCHING_FACTOR: usize = 35;
 pub struct Move {
     from: Position,
     to: Position,
-    ordering_value: u32,
+    ordering_value: u16,
     moved_piece_kind: PieceKind,
     captured_piece_kind: PieceKind,
     flags: MoveFlags,
@@ -64,10 +64,10 @@ impl Move {
     pub const fn captured_piece_kind(&self) -> PieceKind {
         self.captured_piece_kind
     }
-    pub(crate) const fn ordering_value(&self) -> &u32 {
+    pub(crate) const fn ordering_value(&self) -> &u16 {
         &self.ordering_value
     }
-    pub(crate) fn ordering_value_mut(&mut self) -> &mut u32 {
+    pub(crate) fn ordering_value_mut(&mut self) -> &mut u16 {
         &mut self.ordering_value
     }
     pub(crate) fn flags_mut(&mut self) -> &mut MoveFlags {
@@ -83,21 +83,15 @@ impl Display for Move {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct MoveFlags(u8);
 
 impl MoveFlags {
-    pub fn is_promotion(&self) -> bool {
+    pub const fn is_promotion(&self) -> bool {
         self.0 & 1 == 1
     }
     pub fn set_promotion(&mut self, promotion: bool) {
-        self.0 |= promotion as u8
-    }
-}
-
-impl Default for MoveFlags {
-    fn default() -> Self {
-        Self(0)
+        self.0 |= u8::from(promotion)
     }
 }
 
@@ -133,6 +127,33 @@ fn original_position_moves() {
 
     // There should always be 20 legal moves in the starting position
     assert_eq!(20, moves.len());
+}
+
+#[test]
+fn opening_position_moves() {
+    let board = Board::from_fen("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
+        .unwrap();
+
+    let moves = MoveGen::new(&board).into_inner();
+
+    // In this position, there are 26 legal moves
+    assert_eq!(26, moves.len());
+}
+
+#[test]
+fn middle_game_moves() {
+    let board = Board::from_fen("r1b5/ppk3pp/2p5/8/4Nr2/4Rn2/PPP4P/1K3B1R b - - 7 26").unwrap();
+
+    let moves = MoveGen::new(&board).into_inner();
+
+    assert_eq!(34, moves.len());
+
+    let board =
+        Board::from_fen("r2q1rk1/1p3p1p/1b4p1/pPp5/3p2b1/P7/B1PQNn1P/R1B2RK1 w - - 0 32").unwrap();
+
+    let moves = MoveGen::new(&board).into_inner();
+
+    assert_eq!(34, moves.len());
 }
 
 impl Board {
@@ -184,7 +205,7 @@ impl Board {
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 
@@ -236,7 +257,7 @@ impl Board {
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 
@@ -271,7 +292,7 @@ impl Board {
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 
@@ -323,7 +344,7 @@ impl Board {
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 
@@ -346,8 +367,8 @@ impl Board {
 
     fn gen_black_pawn_left(&self, move_list: &mut Vec<Move>) {
         let mut left_attacks =
-            (self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize] >> 7)
-                & self.all_pieces[PlayableTeam::Black as usize]
+            (self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 7)
+                & self.all_pieces[PlayableTeam::White as usize]
                 & !MASK_FILE[0];
 
         let mut left_promotion_attacks = left_attacks & MASK_RANK[0];
@@ -360,7 +381,7 @@ impl Board {
                 Position::from_u8((to + 7) as u8),
                 Position::from_u8(to as u8),
                 PieceKind::Pawn,
-                self.kind_at(PlayableTeam::Black, Position::from_u8(to as u8)),
+                self.kind_at(PlayableTeam::White, Position::from_u8(to as u8)),
             ));
         }
 
@@ -371,18 +392,18 @@ impl Board {
                 Position::from_u8((to + 7) as u8),
                 Position::from_u8(to as u8),
                 PieceKind::Pawn,
-                self.kind_at(PlayableTeam::Black, Position::from_u8(to as u8)),
+                self.kind_at(PlayableTeam::White, Position::from_u8(to as u8)),
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 
     fn gen_black_pawn_right(&self, move_list: &mut Vec<Move>) {
         let mut right_attacks =
-            (self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize] >> 9)
-                & self.all_pieces[PlayableTeam::Black as usize]
+            (self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 9)
+                & self.all_pieces[PlayableTeam::White as usize]
                 & !MASK_FILE[0];
 
         let mut right_promotion_attacks = right_attacks & MASK_RANK[0];
@@ -395,7 +416,7 @@ impl Board {
                 Position::from_u8((to + 9) as u8),
                 Position::from_u8(to as u8),
                 PieceKind::Pawn,
-                self.kind_at(PlayableTeam::Black, Position::from_u8(to as u8)),
+                self.kind_at(PlayableTeam::White, Position::from_u8(to as u8)),
             ));
         }
 
@@ -406,11 +427,11 @@ impl Board {
                 Position::from_u8((to + 9) as u8),
                 Position::from_u8(to as u8),
                 PieceKind::Pawn,
-                self.kind_at(PlayableTeam::Black, Position::from_u8(to as u8)),
+                self.kind_at(PlayableTeam::White, Position::from_u8(to as u8)),
             );
             new_move.flags_mut().set_promotion(true);
 
-            move_list.push(new_move)
+            move_list.push(new_move);
         }
     }
 }
@@ -442,12 +463,12 @@ impl Board {
         match kind {
             PieceKind::Pawn => todo!(),
             PieceKind::Rook => magic::rook_attacks(position, blockers),
-            PieceKind::Knight => magic::knight_attacks(position, blockers),
+            PieceKind::Knight => magic::knight_attacks(position),
             PieceKind::Bishop => magic::bishop_attacks(position, blockers),
             PieceKind::Queen => {
                 magic::rook_attacks(position, blockers) | magic::bishop_attacks(position, blockers)
             }
-            PieceKind::King => magic::king_attacks(position, blockers),
+            PieceKind::King => magic::king_attacks(position),
             PieceKind::None => 0,
         }
     }

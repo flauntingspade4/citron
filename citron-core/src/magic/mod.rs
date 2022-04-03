@@ -14,7 +14,7 @@ use pawn::PAWN_ATTACKS;
 use rook::{ROOK_ATTACKS, ROOK_MASKS};
 
 #[must_use]
-pub fn pawn_attacks(position: Position, team: PlayableTeam) -> u64 {
+pub const fn pawn_attacks(position: Position, team: PlayableTeam) -> u64 {
     let square = position.index() as usize;
 
     PAWN_ATTACKS[team as usize][square]
@@ -41,17 +41,17 @@ pub fn rook_attacks(position: Position, mut blockers: u64) -> u64 {
 }
 
 #[must_use]
-pub const fn knight_attacks(position: Position, blockers: u64) -> u64 {
+pub const fn knight_attacks(position: Position) -> u64 {
     let square = position.index() as usize;
 
-    KNIGHT_ATTACKS[square] & !blockers
+    KNIGHT_ATTACKS[square]
 }
 
 #[must_use]
-pub const fn king_attacks(position: Position, blockers: u64) -> u64 {
+pub const fn king_attacks(position: Position) -> u64 {
     let square = position.index() as usize;
 
-    KING_ATTACKS[square] & !blockers
+    KING_ATTACKS[square]
 }
 
 pub const fn pop_lsb(mask: &mut u64) -> u64 {

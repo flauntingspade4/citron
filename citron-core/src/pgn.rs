@@ -44,7 +44,7 @@ impl Move {
             Err(_) => panic!(),
         };
 
-        if self.moved_piece_kind() == PieceKind::None {
+        if self.captured_piece_kind() == PieceKind::None {
             uci.map_or_else(
                 || format!("{}{}", x, y),
                 |piece_identifier| format!("{}{}{}{}", piece_identifier, from_x, x, y),
@@ -70,29 +70,43 @@ const fn piece_to_uci(kind: PieceKind) -> Result<Option<char>, ()> {
     })
 }
 
-/*
 #[test]
 fn pgn_gen() {
+    use crate::{Board, Position};
+
     let mut board = Board::new();
 
     let mut pgn = Pgn::new();
 
-    let played_move = (
+    let (from, to) = (
         Position::from_uci("e2").unwrap(),
         Position::from_uci("e4").unwrap(),
     );
 
-    pgn.add_move(played_move, &board);
+    let played_move = Move::new(
+        from,
+        to,
+        board.kind_at(board.to_play(), from),
+        board.kind_at(board.to_play(), to),
+    );
 
-    board = board.make_move(played_move.0, played_move.1).unwrap();
+    pgn.add_move(&played_move);
 
-    let played_move = (
+    board = board.make_move(&played_move).unwrap();
+
+    let (from, to) = (
         Position::from_uci("e7").unwrap(),
         Position::from_uci("e5").unwrap(),
     );
 
-    pgn.add_move(played_move, &board);
+    let played_move = Move::new(
+        from,
+        to,
+        board.kind_at(board.to_play(), from),
+        board.kind_at(board.to_play(), to),
+    );
 
-    println!("{}", pgn.finish());
+    pgn.add_move(&played_move);
+
+    assert_eq!("1. e4 e5", pgn.finish().trim());
 }
-*/
