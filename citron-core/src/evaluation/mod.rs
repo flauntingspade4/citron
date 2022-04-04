@@ -57,16 +57,7 @@ impl Board {
         match self.material.cmp(&0) {
             Ordering::Less => -((DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - self.absolute_material) >> 7),
             Ordering::Equal => 0,
-            Ordering::Greater => {
-                if let Some(t) =
-                    DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL.checked_sub(self.absolute_material)
-                {
-                    t >> 7
-                } else {
-                    println!("{}", self);
-                    panic!("{}", self.absolute_material)
-                }
-            }
+            Ordering::Greater => (DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL - self.absolute_material) >> 7,
         }
     }
 }

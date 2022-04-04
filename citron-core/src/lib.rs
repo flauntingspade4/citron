@@ -24,6 +24,7 @@ pub use position::Position;
 
 pub use move_gen::MoveGen;
 use piece::{Piece, PieceKind, PAWN_VALUE};
+pub use transposition_table::hash;
 use transposition_table::ZOBRIST_KEYS;
 
 /// The chess board itself. Most functionality of the engine is

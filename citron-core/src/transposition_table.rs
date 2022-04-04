@@ -1,6 +1,6 @@
 use std::{collections::HashMap, lazy::SyncLazy};
 
-use crate::{analysis::Node, move_gen::Move};
+use crate::{analysis::Node, move_gen::Move, Board, PlayableTeam, Position};
 
 use rand::{Fill, RngCore};
 
@@ -16,6 +16,25 @@ pub static ZOBRIST_KEYS: SyncLazy<([[u64; 12]; 64], u64)> = SyncLazy::new(|| {
 });
 
 pub type TranspositionTable = HashMap<u64, TranspositionEntry>;
+
+#[must_use]
+pub fn hash(board: &Board) -> u64 {
+    let mut hash = 0;
+
+    for position in Position::positions() {
+        let piece = board.piece_at(position);
+
+        if piece.is_piece() {
+            hash ^= ZOBRIST_KEYS.0[position.index() as usize][piece as usize];
+        }
+    }
+
+    if board.to_play == PlayableTeam::Black {
+        hash ^= ZOBRIST_KEYS.1;
+    }
+
+    hash
+}
 
 #[derive(Debug)]
 pub struct TranspositionEntry {

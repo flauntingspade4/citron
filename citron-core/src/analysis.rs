@@ -311,129 +311,47 @@ fn good_test() {
     );
 }
 
-/*
 #[test]
-fn horde() {
-    let board = Board::from_fen(
-        "rnbqkbnr/pppppppp/8/1PP2PP1/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP w - - 0 0",
-    )
-    .unwrap();
+fn simple_tactical_puzzle_1() {
+    use crate::Position;
 
-    println!("{}", board);
+    let board = Board::from_fen("5nk1/7p/2Q2Pp1/1p1rp1P1/p2P2q1/1PN5/P1K5/5R2 b - - 0 1").unwrap();
 
-    let start = std::time::Instant::now();
+    let table = board.iterative_deepening_ply(10);
 
-    let table = board.iterative_deepening(6);
+    let best = table.get(&board.hash()).unwrap();
+    let (from, to) = best.best_move.from_to();
 
-    let best = table.get(&hash(&board)).unwrap();
-    let (from, to) = best.best_move;
-
-    let elapsed = start.elapsed().as_millis();
-
-    println!(
-        "{}ms ({}) ({}) {}",
-        elapsed,
-        from,
-        to,
-        best.evaluation.into_inner()
-    );
-
-    #[cfg(feature = "debug")]
-    println!(
-        "{}k nodes/s",
-        POSITIONS_CONSIDERED.load(Ordering::SeqCst) / elapsed as usize
-    );
+    assert_eq!(Position::new(6, 3), from);
+    assert_eq!(Position::new(6, 1), to);
 }
 
 #[test]
-fn fight_self() {
-    use crate::{pgn::Pgn, PlayableTeam};
+fn simple_tactical_puzzle_2() {
+    use crate::Position;
 
-    let mut fast_to_play = PlayableTeam::White;
-    let mut fast_won = 0;
-    let mut slow_won = 0;
+    let board = Board::from_fen("5bk1/5pp1/r4n1p/4p3/3nP3/6NP/1BB2PP1/R5K1 b - - 0 1").unwrap();
 
-    let depth = 4;
+    let table = board.iterative_deepening_ply(10);
 
-    for _ in 0..1 {
-        let mut board = Board::new();
+    let best = table.get(&board.hash()).unwrap();
+    let (from, to) = best.best_move.from_to();
 
-        let mut pgn = Pgn::new();
-
-        match fast_to_play {
-            PlayableTeam::White => {
-                for i in 0..40 {
-                    let table = board.iterative_deepening(depth);
-
-                    let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.best_move;
-
-                    if best.evaluation.into_inner() == -KING_VALUE {
-                        fast_won += 1;
-                        break;
-                    }
-
-                    pgn.add_move((from, to), &board);
-
-                    board = board.make_move(from, to).unwrap();
-
-                    let table = board.iterative_deepening_ply(depth - 1);
-
-                    let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.best_move;
-
-                    if best.evaluation.into_inner() == KING_VALUE {
-                        slow_won += 1;
-                        break;
-                    }
-
-                    pgn.add_move((from, to), &board);
-
-                    board = board.make_move(from, to).unwrap();
-
-                    if i % 5 == 0 {
-                        println!("Done move {}", i);
-                    }
-                }
-            }
-            PlayableTeam::Black => {
-                for _ in 0..40 {
-                    let table = board.iterative_deepening(depth);
-
-                    let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.best_move;
-
-                    if best.evaluation.into_inner() == -KING_VALUE {
-                        slow_won += 1;
-                        break;
-                    }
-
-                    pgn.add_move((from, to), &board);
-
-                    board = board.make_move(from, to).unwrap();
-
-                    let table = board.iterative_deepening(depth);
-
-                    let best = table.get(&hash(&board)).unwrap();
-                    let (from, to) = best.best_move;
-
-                    if best.evaluation.into_inner() == KING_VALUE {
-                        fast_won += 1;
-                        break;
-                    }
-
-                    pgn.add_move((from, to), &board);
-
-                    board = board.make_move(from, to).unwrap();
-                }
-            }
-        }
-
-        println!("{}", pgn.finish());
-
-        println!("{} {}", fast_won, slow_won);
-
-        fast_to_play = !fast_to_play;
-    }
+    assert_eq!(Position::new(0, 5), from);
+    assert_eq!(Position::new(0, 0), to);
 }
-*/
+
+#[test]
+fn simple_tactical_puzzle_3() {
+    use crate::Position;
+
+    let board = Board::from_fen("4r1k1/2Q2pp1/7p/8/5q2/7P/5PP1/2R3K1 b - - 1 1").unwrap();
+
+    let table = board.iterative_deepening_ply(10);
+
+    let best = table.get(&board.hash()).unwrap();
+    let (from, to) = best.best_move.from_to();
+
+    assert_eq!(Position::new(4, 7), from);
+    assert_eq!(Position::new(4, 0), to);
+}
