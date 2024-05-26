@@ -1,4 +1,4 @@
-use std::lazy::SyncLazy;
+use std::sync::LazyLock;
 
 use super::{
     bitscan_backward, bitscan_forward,
@@ -8,7 +8,7 @@ use super::{
 
 pub const ROOK_MASKS: [u64; 64] = init_rook_masks();
 
-pub static ROOK_ATTACKS: SyncLazy<Vec<[u64; 4096]>> = SyncLazy::new(|| {
+pub static ROOK_ATTACKS: LazyLock<Vec<[u64; 4096]>> = LazyLock::new(|| {
     let mut attacks = vec![[0; 4096]; 64];
 
     for (attack_square, square) in attacks.iter_mut().zip(0..64) {

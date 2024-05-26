@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![feature(once_cell, mixed_integer_ops, const_mut_refs, array_zip)]
+#![feature(const_mut_refs, lazy_cell)]
 
 use core::{
     fmt::{Debug, Display, Formatter},
@@ -215,7 +215,7 @@ impl Board {
         if self.all_pieces[team as usize] & bitmap == 0 {
             PieceKind::None
         } else {
-            for (pieces, kind) in self.pieces[team as usize].zip(PieceKind::kinds()) {
+            for (pieces, kind) in self.pieces[team as usize].iter().zip(PieceKind::kinds()) {
                 if pieces & bitmap == bitmap {
                     return kind;
                 }
@@ -242,7 +242,7 @@ impl Board {
 
         for team in PlayableTeam::teams() {
             if self.all_pieces[team as usize] & bitmap != 0 {
-                for (pieces, kind) in self.pieces[team as usize].zip(PieceKind::kinds()) {
+                for (pieces, kind) in self.pieces[team as usize].iter().zip(PieceKind::kinds()) {
                     if pieces & bitmap == bitmap {
                         return Piece::new(team.into(), kind);
                     }

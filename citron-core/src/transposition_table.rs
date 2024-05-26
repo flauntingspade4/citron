@@ -1,10 +1,10 @@
-use std::{collections::HashMap, lazy::SyncLazy};
+use std::{collections::HashMap, sync::LazyLock};
 
 use crate::{analysis::Node, move_gen::Move, Board, PlayableTeam, Position};
 
 use rand::{Fill, RngCore};
 
-pub static ZOBRIST_KEYS: SyncLazy<([[u64; 12]; 64], u64)> = SyncLazy::new(|| {
+pub static ZOBRIST_KEYS: LazyLock<([[u64; 12]; 64], u64)> = LazyLock::new(|| {
     let mut initial: [u64; 12 * 64] = [0; 12 * 64];
 
     let mut rng = rand::thread_rng();

@@ -1,4 +1,4 @@
-use std::lazy::SyncLazy;
+use std::sync::LazyLock;
 
 use super::{
     bitscan_backward, bitscan_forward,
@@ -8,7 +8,7 @@ use super::{
 
 pub const BISHOP_MASKS: [u64; 64] = init_bishop_masks();
 
-pub static BISHOP_ATTACKS: SyncLazy<Vec<[u64; 1024]>> = SyncLazy::new(|| {
+pub static BISHOP_ATTACKS: LazyLock<Vec<[u64; 1024]>> = LazyLock::new(|| {
     let mut attacks = vec![[0; 1024]; 64];
 
     for (attack_square, square) in attacks.iter_mut().zip(0..64) {
