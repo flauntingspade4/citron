@@ -1,5 +1,4 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![feature(const_mut_refs, lazy_cell)]
 
 use core::{
     fmt::{Debug, Display, Formatter},
@@ -41,8 +40,7 @@ pub struct Board {
     /// The material count. A negative count indicates it's in black's favour,
     /// and a positive in white's
     pub material: i16,
-    /// The amount of material remaining on the board, excluding any material
-    /// kings may be worth
+    /// The amount of material remaining on the board, the kings
     pub absolute_material: i16,
     /// The position of each side's king
     king_positions: (Position, Position),
@@ -82,13 +80,14 @@ impl Board {
                 board.material -= played_move.captured_piece_kind().value();
             }
 
-            // board.absolute_material -= played_move.captured_piece_kind().value();
+            board.absolute_material -= played_move.captured_piece_kind().value();
 
             board.remove_piece(
-                Piece::new((!board.to_play).into(), played_move.captured_piece_kind()),
+                Piece::new(!board.to_play, played_move.captured_piece_kind()),
                 played_move.to(),
             );
         }
+
         board.move_piece(
             played_move.moved_piece_kind(),
             played_move.from(),
@@ -104,7 +103,7 @@ impl Board {
         Some(board)
     }
     fn move_piece(&mut self, kind: PieceKind, from: Position, to: Position) {
-        let piece = Piece::new(self.to_play.into(), kind);
+        let piece = Piece::new(self.to_play, kind);
 
         self.remove_piece(piece, from);
         self.add_piece(piece, to);
@@ -134,6 +133,7 @@ impl Board {
 
         board
     }
+
     /// Creates a board from a given FEN
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
@@ -244,7 +244,7 @@ impl Board {
             if self.all_pieces[team as usize] & bitmap != 0 {
                 for (pieces, kind) in self.pieces[team as usize].iter().zip(PieceKind::kinds()) {
                     if pieces & bitmap == bitmap {
-                        return Piece::new(team.into(), kind);
+                        return Piece::new(team, kind);
                     }
                 }
             }

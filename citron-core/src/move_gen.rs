@@ -36,7 +36,7 @@ impl Move {
             ordering_value: 0,
             moved_piece_kind,
             captured_piece_kind,
-            flags: MoveFlags(0),
+            flags: MoveFlags::new(),
         }
     }
     /// Returns the position the move is from
@@ -87,6 +87,10 @@ impl Display for Move {
 pub struct MoveFlags(u8);
 
 impl MoveFlags {
+    pub const fn new() -> Self {
+        Self(0)
+    }
+
     pub const fn is_promotion(&self) -> bool {
         self.0 & 1 == 1
     }

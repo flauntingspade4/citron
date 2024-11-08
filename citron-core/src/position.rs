@@ -90,7 +90,7 @@ impl Position {
     #[must_use]
     pub fn from_bitmap(bitmap: u64) -> Self {
         if bitmap == 0 {
-            println!("Wtaf");
+            panic!("Trying to construct position from empty bitmap");
         }
         Self(crate::magic::bitscan_forward(bitmap) as u8)
     }
@@ -153,4 +153,10 @@ fn uci_test() {
 
     let position = Position::from_u8(9);
     assert_eq!(position.to_uci(), ('b', '2'));
+}
+
+#[test]
+fn bitmap_test() {
+    let position = Position::from_bitmap(0b1000);
+    assert_eq!(position, Position::new(3, 0));
 }

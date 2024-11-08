@@ -31,8 +31,8 @@ pub enum Piece {
 impl Piece {
     /// Create a piece based off it's [`Team`] and [`PieceKind`]
     #[must_use]
-    pub const fn new(team: Team, kind: PieceKind) -> Self {
-        match (team, kind) {
+    pub fn new(team: impl Into<Team>, kind: PieceKind) -> Self {
+        match (team.into(), kind) {
             (Team::White, PieceKind::Pawn) => Self::WhitePawn,
             (Team::White, PieceKind::Rook) => Self::WhiteRook,
             (Team::White, PieceKind::Knight) => Self::WhiteKnight,
