@@ -110,7 +110,7 @@ impl MoveGen {
     pub fn new(board: &Board) -> Self {
         let mut move_list = Vec::with_capacity(BRANCHING_FACTOR);
 
-        match board.to_play {
+        match board.to_play() {
             PlayableTeam::White => board.gen_white_moves(&mut move_list),
             PlayableTeam::Black => board.gen_black_moves(&mut move_list),
         }
@@ -164,10 +164,10 @@ impl Board {
     fn gen_white_moves(&self, move_list: &mut Vec<Move>) {
         self.gen_white_pawn_moves(move_list);
 
-        let blockers = self.get_occupied();
+        let blockers = self.blockers();
 
         for kind in PieceKind::kinds_no_pawn() {
-            let pieces = self.pieces[PlayableTeam::White as usize][kind as usize];
+            let pieces = self.pieces()[PlayableTeam::White as usize][kind as usize];
 
             self.gen_moves(PlayableTeam::White, kind, pieces, blockers, move_list);
         }
@@ -182,8 +182,8 @@ impl Board {
 
     fn gen_white_single_pawn_moves(&self, move_list: &mut Vec<Move>) {
         let mut moved_pawns =
-            self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 8;
-        moved_pawns &= self.get_not_occupied();
+            self.pieces()[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 8;
+        moved_pawns &= self.not_blockers();
 
         let mut promotions = moved_pawns & MASK_RANK[7];
         moved_pawns &= !MASK_RANK[7];
@@ -214,10 +214,10 @@ impl Board {
     }
 
     fn gen_white_double_pawn_moves(&self, move_list: &mut Vec<Move>) {
-        let single_pushes = (self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize]
+        let single_pushes = (self.pieces()[PlayableTeam::White as usize][PieceKind::Pawn as usize]
             << 8)
-            & self.get_not_occupied();
-        let mut double_pushes = (single_pushes << 8) & self.get_not_occupied() & MASK_RANK[3];
+            & self.not_blockers();
+        let mut double_pushes = (single_pushes << 8) & self.not_blockers() & MASK_RANK[3];
 
         while double_pushes != 0 {
             let to = pop_lsb(&mut double_pushes);
@@ -232,8 +232,8 @@ impl Board {
 
     fn gen_white_pawn_left(&self, move_list: &mut Vec<Move>) {
         let mut left_attacks =
-            (self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 7)
-                & self.all_pieces[PlayableTeam::Black as usize]
+            (self.pieces()[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 7)
+                & self.all_pieces()[PlayableTeam::Black as usize]
                 & !MASK_FILE[7];
 
         let mut left_promotion_attacks = left_attacks & MASK_RANK[7];
@@ -267,8 +267,8 @@ impl Board {
 
     fn gen_white_pawn_right(&self, move_list: &mut Vec<Move>) {
         let mut right_attacks =
-            (self.pieces[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 9)
-                & self.all_pieces[PlayableTeam::Black as usize]
+            (self.pieces()[PlayableTeam::White as usize][PieceKind::Pawn as usize] << 9)
+                & self.all_pieces()[PlayableTeam::Black as usize]
                 & !MASK_FILE[0];
 
         let mut right_promotion_attacks = right_attacks & MASK_RANK[7];
@@ -303,10 +303,10 @@ impl Board {
     fn gen_black_moves(&self, move_list: &mut Vec<Move>) {
         self.gen_black_pawn_moves(move_list);
 
-        let blockers = self.get_occupied();
+        let blockers = self.blockers();
 
         for kind in PieceKind::kinds_no_pawn() {
-            let pieces = self.pieces[PlayableTeam::Black as usize][kind as usize];
+            let pieces = self.pieces()[PlayableTeam::Black as usize][kind as usize];
 
             self.gen_moves(PlayableTeam::Black, kind, pieces, blockers, move_list);
         }
@@ -321,8 +321,8 @@ impl Board {
 
     fn gen_black_single_pawn_moves(&self, move_list: &mut Vec<Move>) {
         let mut moved_pawns =
-            self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 8;
-        moved_pawns &= self.get_not_occupied();
+            self.pieces()[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 8;
+        moved_pawns &= self.not_blockers();
 
         let mut promotions = moved_pawns & MASK_RANK[0];
         moved_pawns &= !MASK_RANK[0];
@@ -353,10 +353,10 @@ impl Board {
     }
 
     fn gen_black_double_pawn_moves(&self, move_list: &mut Vec<Move>) {
-        let single_pushes = (self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize]
+        let single_pushes = (self.pieces()[PlayableTeam::Black as usize][PieceKind::Pawn as usize]
             >> 8)
-            & self.get_not_occupied();
-        let mut double_pushes = (single_pushes >> 8) & self.get_not_occupied() & MASK_RANK[4];
+            & self.not_blockers();
+        let mut double_pushes = (single_pushes >> 8) & self.not_blockers() & MASK_RANK[4];
 
         while double_pushes != 0 {
             let to = pop_lsb(&mut double_pushes);
@@ -371,8 +371,8 @@ impl Board {
 
     fn gen_black_pawn_left(&self, move_list: &mut Vec<Move>) {
         let mut left_attacks =
-            (self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 7)
-                & self.all_pieces[PlayableTeam::White as usize]
+            (self.pieces()[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 7)
+                & self.all_pieces()[PlayableTeam::White as usize]
                 & !MASK_FILE[0];
 
         let mut left_promotion_attacks = left_attacks & MASK_RANK[0];
@@ -406,8 +406,8 @@ impl Board {
 
     fn gen_black_pawn_right(&self, move_list: &mut Vec<Move>) {
         let mut right_attacks =
-            (self.pieces[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 9)
-                & self.all_pieces[PlayableTeam::White as usize]
+            (self.pieces()[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 9)
+                & self.all_pieces()[PlayableTeam::White as usize]
                 & !MASK_FILE[0];
 
         let mut right_promotion_attacks = right_attacks & MASK_RANK[0];
@@ -457,7 +457,7 @@ impl Board {
             while moves != 0 {
                 let to = Position::from_u8(magic::pop_lsb(&mut moves) as u8);
 
-                if self.team_at(to) != self.to_play.into() {
+                if self.team_at(to) != self.to_play().into() {
                     move_list.push(Move::new(from, to, kind, self.kind_at(!team, to)));
                 }
             }

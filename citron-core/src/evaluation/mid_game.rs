@@ -1,14 +1,14 @@
 use crate::{
     magic::{self, pop_lsb},
     piece::{Piece, PieceKind},
-    Board, PlayableTeam, Position, Team,
+    Game, PlayableTeam, Position, Team,
 };
 
-impl Board {
+impl Game {
     #[must_use]
     pub fn middle_game_evaluation(&self) -> i16 {
         10 * (self.positions_pieces().fold(0, |moves, (position, p)| {
-            let blockers = self.all_pieces[0] | self.all_pieces[1];
+            let blockers = self.board.blockers();
 
             let mobility: i16 = match p.kind() {
                 PieceKind::Rook => magic::rook_attacks(position, blockers),
@@ -40,8 +40,10 @@ impl Board {
             (piece_map != 0).then(|| Position::from_bitmap(pop_lsb(&mut piece_map)))
         })
     }
-    pub fn positions_pieces(&self) -> impl Iterator<Item = (Position, Piece)> + use<'_> {
-        self.pieces
+    pub fn positions_pieces<'a>(&'a self) -> impl Iterator<Item = (Position, Piece)> + use<'a> {
+        let pieces = self.board.pieces();
+
+        pieces
             .iter()
             .zip(PlayableTeam::teams())
             .map(|(pieces, team)| {

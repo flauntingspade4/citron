@@ -17,6 +17,7 @@ pub static ZOBRIST_KEYS: LazyLock<([[u64; 12]; 64], u64)> = LazyLock::new(|| {
 
 pub type TranspositionTable = HashMap<u64, TranspositionEntry>;
 
+// TODO change this to take advantage of magic bitmaps
 #[must_use]
 pub fn hash(board: &Board) -> u64 {
     let mut hash = 0;
@@ -29,7 +30,7 @@ pub fn hash(board: &Board) -> u64 {
         }
     }
 
-    if board.to_play == PlayableTeam::Black {
+    if board.to_play() == PlayableTeam::Black {
         hash ^= ZOBRIST_KEYS.1;
     }
 

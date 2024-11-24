@@ -1,15 +1,15 @@
 use crate::{
     move_ordering::quiescence_move_ordering,
     piece::{PieceKind, KING_VALUE, PAWN_VALUE},
-    Board, MoveGen, PlayableTeam,
+    Game, MoveGen, PlayableTeam,
 };
 
 const DELTA: i16 = 2 * PAWN_VALUE;
 
-impl Board {
+impl Game {
     #[must_use]
     pub fn quiesce(&self, mut alpha: i16, beta: i16) -> i16 {
-        let stand_pat = if self.to_play == PlayableTeam::White {
+        let stand_pat = if self.to_play() == PlayableTeam::White {
             self.static_evaluation()
         } else {
             -self.static_evaluation()
@@ -23,7 +23,7 @@ impl Board {
             alpha = stand_pat;
         }
 
-        let mut moves = MoveGen::new(self).into_inner();
+        let mut moves = MoveGen::new(&self.board).into_inner();
 
         quiescence_move_ordering(&mut moves);
 

@@ -32,7 +32,7 @@ impl Node {
 
 pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
-        if let Some(best) = transposition_table.get(&starting_board.hash) {
+        if let Some(best) = transposition_table.get(&starting_board.hash()) {
             let (from, to) = best.best_move.from_to();
             println!(
                 "Best move in position: ({}) ({}) {:?}",
@@ -90,6 +90,7 @@ impl Board {
 
         transposition_table
     }
+
     fn evaluate_private(
         &self,
         depth: u8,
@@ -102,7 +103,7 @@ impl Board {
             return self.static_evaluation();
         }
 
-        if let Some(t) = transposition_table.get(&self.hash) {
+        if let Some(t) = transposition_table.get(&self.hash()) {
             if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
@@ -114,12 +115,11 @@ impl Board {
         let mut pv_search = true;
 
         let mut moves = MoveGen::new(self).into_inner();
-
         move_ordering(
             ply,
             &mut moves,
             (transposition_table, killer_table),
-            self.hash,
+            self.hash(),
         );
 
         // Multi-cut
@@ -159,7 +159,7 @@ impl Board {
                     if possible_move.captured_piece_kind() == PieceKind::King {
                         if ply == 0 {
                             transposition_table.insert(
-                                self.hash,
+                                self.hash(),
                                 TranspositionEntry::new(
                                     depth,
                                     Node::PvNode(KING_VALUE),
@@ -241,7 +241,7 @@ impl Board {
             let transposition_entry =
                 TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), possible_move);
 
-            match transposition_table.entry(self.hash) {
+            match transposition_table.entry(self.hash()) {
                 Entry::Occupied(mut entry) => {
                     if entry.get().depth <= depth {
                         entry.insert(transposition_entry);
@@ -259,7 +259,7 @@ impl Board {
             let transposition_entry =
                 TranspositionEntry::new(depth, Node::PvNode(alpha), best_move);
 
-            match transposition_table.entry(self.hash) {
+            match transposition_table.entry(self.hash()) {
                 Entry::Occupied(mut entry) => {
                     if entry.get().depth <= depth {
                         entry.insert(transposition_entry);

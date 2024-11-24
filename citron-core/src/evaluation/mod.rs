@@ -9,7 +9,7 @@ use core::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::{
     piece::{PieceKind, PAWN_VALUE},
-    Board, PlayableTeam,
+    Game, PlayableTeam,
 };
 
 #[cfg(feature = "debug")]
@@ -17,7 +17,7 @@ pub static POSITIONS_CONSIDERED: AtomicUsize = AtomicUsize::new(0);
 
 const DEFAULT_MAXIMUM_ABSOLUTE_MATERIAL: i16 = 78 * PAWN_VALUE + 100;
 
-impl Board {
+impl Game {
     #[must_use]
     pub fn static_evaluation(&self) -> i16 {
         #[cfg(feature = "debug")]
@@ -33,19 +33,22 @@ impl Board {
                 self.end_game_evaluation()
             }
     }
+
     pub fn calculate_material(&mut self) {
+        let pieces = self.board.pieces();
+
         for kind in PieceKind::kinds_no_king() {
-            self.material += self.pieces[PlayableTeam::White as usize][kind as usize].count_ones()
+            self.material += pieces[PlayableTeam::White as usize][kind as usize].count_ones()
                 as i16
                 * kind.value();
-            self.absolute_material += self.pieces[PlayableTeam::White as usize][kind as usize]
+            self.absolute_material += pieces[PlayableTeam::White as usize][kind as usize]
                 .count_ones() as i16
                 * kind.value();
 
-            self.material -= self.pieces[PlayableTeam::Black as usize][kind as usize].count_ones()
+            self.material -= pieces[PlayableTeam::Black as usize][kind as usize].count_ones()
                 as i16
                 * kind.value();
-            self.absolute_material += self.pieces[PlayableTeam::Black as usize][kind as usize]
+            self.absolute_material += pieces[PlayableTeam::Black as usize][kind as usize]
                 .count_ones() as i16
                 * kind.value();
         }

@@ -1,6 +1,6 @@
-use crate::Board;
+use crate::Game;
 
-impl Board {
+impl Game {
     #[must_use]
     pub const fn end_game_evaluation(&self) -> i16 {
         0
