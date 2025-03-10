@@ -1,5 +1,7 @@
 use core::fmt::{Display, Formatter, Result};
 
+/// A board position represented by a number.
+/// The value of that number is `y * 8 + x`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Position(u8);
 
@@ -80,13 +82,19 @@ impl Position {
     pub const fn index(&self) -> u8 {
         self.0
     }
+    /// Checks the value contained in `self` is a valid
+    /// position
     #[must_use]
     pub const fn is_valid(&self) -> bool {
         self.0 < 64
     }
+    /// Returns an iterator over all the positions on a chess
+    /// board
     pub fn positions() -> impl Iterator<Item = Self> {
         (0..64).map(Self)
     }
+    /// Takes the first set bit of a given bitmap and returns
+    /// the position associated with it
     #[must_use]
     pub fn from_bitmap(bitmap: u64) -> Self {
         if bitmap == 0 {

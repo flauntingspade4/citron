@@ -5,6 +5,9 @@ use core::{
     ops::Not,
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 pub mod analysis;
 mod board;
 mod evaluation;
@@ -85,7 +88,7 @@ impl Game {
     /// Creates a board from a given FEN
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
-        let mut board = Board::from_fen(fen)?;
+        let board = Board::from_fen(fen)?;
 
         let mut fen_parts = fen.split(' ');
 
@@ -100,15 +103,17 @@ impl Game {
         fen_parts.next()?;
 
         let turn = fen_parts.next()?.parse().ok()?;
-        board.calculate_material();
 
-        Some(Self {
+        let mut game = Self {
             board,
             turn,
             material: 0,
             absolute_material: 0,
             king_positions: (Position::new(0, 0), Position::new(0, 0)),
-        })
+        };
+
+        game.calculate_material();
+        Some(game)
     }
 }
 
@@ -164,6 +169,7 @@ fn king_position_test() {
 /// A playable team
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum PlayableTeam {
     White,
     Black,

@@ -1,5 +1,8 @@
 use std::fmt::{Display, Formatter};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use crate::{
     move_gen::Move,
     piece::{Piece, PieceKind},
@@ -10,9 +13,10 @@ use crate::{
 /// The chess board itself. Most functionality of the engine is
 /// implemented as methods on this struct
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Board {
     /// Two arrays of each piece's bitmaps
-    pieces: [[u64; 6]; 2],
+    pub(crate) pieces: [[u64; 6]; 2],
     /// Two bitmaps, one for each team
     all_pieces: [u64; 2],
     /// The team that's turn it is to play
@@ -28,7 +32,7 @@ impl Board {
         hash: 0,
     };
 
-    /// Creates a new board, with a default configuration
+    /// Creates a new board in the starting position
     #[must_use]
     pub fn new() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0").unwrap()
@@ -46,6 +50,17 @@ impl Board {
 
     pub const fn all_pieces(&self) -> [u64; 2] {
         self.all_pieces
+    }
+
+    pub fn result(&self) -> Option<PlayableTeam> {
+        match (
+            self.pieces[0][PieceKind::King as usize].count_ones(),
+            self.pieces[1][PieceKind::King as usize].count_ones(),
+        ) {
+            (1, 0) => Some(PlayableTeam::White),
+            (0, 1) => Some(PlayableTeam::Black),
+            _ => None,
+        }
     }
 
     /// Makes a [`Move`]
@@ -169,8 +184,6 @@ impl Board {
                 board.to_play = PlayableTeam::Black;
             }
         }
-
-        board.calculate_material();
 
         Some(board)
     }

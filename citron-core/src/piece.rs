@@ -187,3 +187,21 @@ impl Default for PieceKind {
         Self::None
     }
 }
+
+impl Display for PieceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                PieceKind::Pawn => "pawn",
+                PieceKind::Rook => "rook",
+                PieceKind::Knight => "knight",
+                PieceKind::Bishop => "bishop",
+                PieceKind::Queen => "queen",
+                PieceKind::King => "king",
+                PieceKind::None => "none",
+            }
+        )
+    }
+}

@@ -408,7 +408,7 @@ impl Board {
         let mut right_attacks =
             (self.pieces()[PlayableTeam::Black as usize][PieceKind::Pawn as usize] >> 9)
                 & self.all_pieces()[PlayableTeam::White as usize]
-                & !MASK_FILE[0];
+                & !MASK_FILE[7];
 
         let mut right_promotion_attacks = right_attacks & MASK_RANK[0];
         right_attacks &= !MASK_RANK[0];

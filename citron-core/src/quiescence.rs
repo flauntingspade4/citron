@@ -58,4 +58,8 @@ impl Game {
 
         alpha
     }
+
+    fn in_endgame(&self) -> bool {
+        self.turn > 50
+    }
 }

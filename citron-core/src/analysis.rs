@@ -5,7 +5,7 @@ use crate::{
     move_ordering::move_ordering,
     piece::{PieceKind, KING_VALUE},
     transposition_table::{TranspositionEntry, TranspositionTable},
-    Board, MoveGen,
+    Game, MoveGen,
 };
 
 const ASPIRATION_WINDOW: i16 = 25;
@@ -30,9 +30,9 @@ impl Node {
     }
 }
 
-pub fn explore_line(mut starting_board: Board, transposition_table: &TranspositionTable) {
+pub fn explore_line(mut starting_board: Game, transposition_table: &TranspositionTable) {
     for _ in 0..10 {
-        if let Some(best) = transposition_table.get(&starting_board.hash()) {
+        if let Some(best) = transposition_table.get(&starting_board.board.hash()) {
             let (from, to) = best.best_move.from_to();
             println!(
                 "Best move in position: ({}) ({}) {:?}",
@@ -52,7 +52,7 @@ pub fn explore_line(mut starting_board: Board, transposition_table: &Transpositi
     }
 }
 
-impl Board {
+impl Game {
     #[must_use]
     pub fn iterative_deepening(&self, depth: u8) -> TranspositionTable {
         self.iterative_deepening_ply(depth * 2)
@@ -103,7 +103,7 @@ impl Board {
             return self.static_evaluation();
         }
 
-        if let Some(t) = transposition_table.get(&self.hash()) {
+        if let Some(t) = transposition_table.get(&self.board.hash()) {
             if t.depth > depth {
                 if let Node::PvNode(evaluation) = t.evaluation {
                     return evaluation;
@@ -114,12 +114,12 @@ impl Board {
         let mut best_move = None;
         let mut pv_search = true;
 
-        let mut moves = MoveGen::new(self).into_inner();
+        let mut moves = MoveGen::new(&self.board).into_inner();
         move_ordering(
             ply,
             &mut moves,
             (transposition_table, killer_table),
-            self.hash(),
+            self.board.hash(),
         );
 
         // Multi-cut
@@ -159,7 +159,7 @@ impl Board {
                     if possible_move.captured_piece_kind() == PieceKind::King {
                         if ply == 0 {
                             transposition_table.insert(
-                                self.hash(),
+                                self.board.hash(),
                                 TranspositionEntry::new(
                                     depth,
                                     Node::PvNode(KING_VALUE),
@@ -241,7 +241,7 @@ impl Board {
             let transposition_entry =
                 TranspositionEntry::new(depth, Node::CutNode(beta_cutoff), possible_move);
 
-            match transposition_table.entry(self.hash()) {
+            match transposition_table.entry(self.board.hash()) {
                 Entry::Occupied(mut entry) => {
                     if entry.get().depth <= depth {
                         entry.insert(transposition_entry);
@@ -259,7 +259,7 @@ impl Board {
             let transposition_entry =
                 TranspositionEntry::new(depth, Node::PvNode(alpha), best_move);
 
-            match transposition_table.entry(self.hash()) {
+            match transposition_table.entry(self.board.hash()) {
                 Entry::Occupied(mut entry) => {
                     if entry.get().depth <= depth {
                         entry.insert(transposition_entry);
@@ -278,7 +278,7 @@ impl Board {
 #[test]
 fn good_test() {
     let board =
-        Board::from_fen("r2q1rk1/1p3p1p/1b4p1/pPp2b2/3pn1P1/P2Q4/B1P1NP1P/R1B2RK1 b - - 0 30")
+        Game::from_fen("r2q1rk1/1p3p1p/1b4p1/pPp2b2/3pn1P1/P2Q4/B1P1NP1P/R1B2RK1 b - - 0 30")
             .unwrap();
 
     println!("{}", board);
@@ -289,7 +289,7 @@ fn good_test() {
 
     let elapsed = start.elapsed().as_millis();
 
-    let best = table.get(&board.hash()).unwrap();
+    let best = table.get(&board.board.hash()).unwrap();
     let (from, to) = best.best_move.from_to();
 
     println!(
@@ -315,11 +315,11 @@ fn good_test() {
 fn simple_tactical_puzzle_1() {
     use crate::Position;
 
-    let board = Board::from_fen("5nk1/7p/2Q2Pp1/1p1rp1P1/p2P2q1/1PN5/P1K5/5R2 b - - 0 1").unwrap();
+    let board = Game::from_fen("5nk1/7p/2Q2Pp1/1p1rp1P1/p2P2q1/1PN5/P1K5/5R2 b - - 0 1").unwrap();
 
     let table = board.iterative_deepening_ply(10);
 
-    let best = table.get(&board.hash()).unwrap();
+    let best = table.get(&board.board.hash()).unwrap();
     let (from, to) = best.best_move.from_to();
 
     assert_eq!(Position::new(6, 3), from);
@@ -330,11 +330,11 @@ fn simple_tactical_puzzle_1() {
 fn simple_tactical_puzzle_2() {
     use crate::Position;
 
-    let board = Board::from_fen("5bk1/5pp1/r4n1p/4p3/3nP3/6NP/1BB2PP1/R5K1 b - - 0 1").unwrap();
+    let board = Game::from_fen("5bk1/5pp1/r4n1p/4p3/3nP3/6NP/1BB2PP1/R5K1 b - - 0 1").unwrap();
 
     let table = board.iterative_deepening_ply(10);
 
-    let best = table.get(&board.hash()).unwrap();
+    let best = table.get(&board.board.hash()).unwrap();
     let (from, to) = best.best_move.from_to();
 
     assert_eq!(Position::new(0, 5), from);
@@ -345,11 +345,11 @@ fn simple_tactical_puzzle_2() {
 fn simple_tactical_puzzle_3() {
     use crate::Position;
 
-    let board = Board::from_fen("4r1k1/2Q2pp1/7p/8/5q2/7P/5PP1/2R3K1 b - - 1 1").unwrap();
+    let board = Game::from_fen("4r1k1/2Q2pp1/7p/8/5q2/7P/5PP1/2R3K1 b - - 1 1").unwrap();
 
     let table = board.iterative_deepening_ply(10);
 
-    let best = table.get(&board.hash()).unwrap();
+    let best = table.get(&board.board.hash()).unwrap();
     let (from, to) = best.best_move.from_to();
 
     assert_eq!(Position::new(4, 7), from);
