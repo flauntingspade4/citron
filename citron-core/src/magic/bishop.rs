@@ -51,14 +51,14 @@ const fn get_bishop_attacks_slow(square: u64, blockers: u64) -> u64 {
     attacks |= RAYS[square][Dir::NorthEast as usize];
     if RAYS[square][Dir::NorthEast as usize] & blockers != 0 {
         attacks &= !RAYS
-            [bitscan_backward(RAYS[square][Dir::NorthEast as usize] & blockers) as usize]
+            [bitscan_forward(RAYS[square][Dir::NorthEast as usize] & blockers) as usize]
             [Dir::NorthEast as usize];
     }
 
     attacks |= RAYS[square][Dir::SouthEast as usize];
     if RAYS[square][Dir::SouthEast as usize] & blockers != 0 {
         attacks &= !RAYS
-            [bitscan_forward(RAYS[square][Dir::SouthEast as usize] & blockers) as usize]
+            [bitscan_backward(RAYS[square][Dir::SouthEast as usize] & blockers) as usize]
             [Dir::SouthEast as usize];
     }
 
