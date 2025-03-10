@@ -7,9 +7,9 @@ use rand::{Fill, RngCore};
 pub static ZOBRIST_KEYS: LazyLock<([[u64; 12]; 64], u64)> = LazyLock::new(|| {
     let mut initial: [u64; 12 * 64] = [0; 12 * 64];
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
-    initial.try_fill(&mut rng).unwrap();
+    initial.fill(&mut rng);
 
     // SAFETY: Transmuting to define array boundaries is always safe
     (unsafe { core::mem::transmute(initial) }, rng.next_u64())
