@@ -59,12 +59,18 @@ impl Board {
         ) {
             (1, 0) => Some(PlayableTeam::White),
             (0, 1) => Some(PlayableTeam::Black),
-            _ => None,
+            (1, 1) => None,
+            _ => panic!(
+                "How are there {} white kings and {} black kings???",
+                self.pieces[0][PieceKind::King as usize].count_ones(),
+                self.pieces[1][PieceKind::King as usize].count_ones()
+            ),
         }
     }
 
-    /// Makes a [`Move`]
-    pub fn make_move(&self, played_move: &Move) -> Option<Self> {
+    /// Plays a [`Move`], returning the new board with the move played and
+    /// all variables updated
+    pub fn make_move(&self, played_move: &Move) -> Self {
         let mut board = self.clone();
 
         if played_move.captured_piece_kind() != PieceKind::None {
@@ -86,7 +92,7 @@ impl Board {
             board.hash ^= ZOBRIST_KEYS.1;
         }
 
-        Some(board)
+        board
     }
 
     pub fn move_piece(&mut self, kind: PieceKind, from: Position, to: Position) {

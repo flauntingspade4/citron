@@ -56,7 +56,7 @@ impl Game {
     }
     /// Makes a [`Move`]
     // TODO Make this mutate the board instead and unmake the move
-    pub fn make_move(&self, played_move: &Move) -> Option<Self> {
+    pub fn make_move(&self, played_move: &Move) -> Self {
         let mut game = self.clone();
 
         if played_move.captured_piece_kind() != PieceKind::None {
@@ -69,10 +69,10 @@ impl Game {
             game.absolute_material -= played_move.captured_piece_kind().value();
         }
 
-        game.board = game.board.make_move(played_move)?;
+        game.board = game.board.make_move(played_move);
         game.turn += 1;
 
-        Some(game)
+        game
     }
     /// Makes a null move (Effectively just switching who it is to move)
     #[must_use]

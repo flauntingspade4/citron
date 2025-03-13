@@ -38,7 +38,7 @@ impl Game {
                 if self.in_endgame()
                     || stand_pat + DELTA + possible_move.captured_piece_kind().value() > alpha
                 {
-                    let possible_board = self.make_move(&possible_move).unwrap();
+                    let possible_board = self.make_move(&possible_move);
 
                     let score = -possible_board.quiesce(-beta, -alpha);
 

@@ -39,7 +39,7 @@ pub fn explore_line(mut starting_board: Game, transposition_table: &Transpositio
                 from, to, best.evaluation
             );
 
-            starting_board = starting_board.make_move(&best.best_move).unwrap();
+            starting_board = starting_board.make_move(&best.best_move);
 
             let (from, to) = best.best_move.from_to();
             let (fx, fy) = from.to_uci();
@@ -127,7 +127,7 @@ impl Game {
             let mut c = 0;
 
             if let Err(multi_cut) = moves.iter().take(MULTICUT_M).try_for_each(|possible_move| {
-                let possible_board = self.make_move(possible_move).unwrap();
+                let possible_board = self.make_move(possible_move);
 
                 let eval = -possible_board.evaluate_private(
                     depth - 3,
@@ -170,7 +170,7 @@ impl Game {
                         return Err((KING_VALUE, possible_move));
                     }
 
-                    let possible_board = self.make_move(&possible_move).unwrap();
+                    let possible_board = self.make_move(&possible_move);
 
                     let score = if index > 3 && depth >= 3 && best_move.is_none() {
                         let eval = -possible_board.evaluate_private(
