@@ -185,7 +185,7 @@ impl PlayableTeam {
         match (self, other) {
             (PlayableTeam::White, PlayableTeam::White)
             | (PlayableTeam::Black, PlayableTeam::Black) => TeamComparison::Same,
-            _ => TeamComparison::Same,
+            _ => TeamComparison::Different,
         }
     }
 }

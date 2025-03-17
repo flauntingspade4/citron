@@ -54,8 +54,8 @@ impl Board {
 
     pub fn result(&self) -> Option<PlayableTeam> {
         match (
-            self.pieces[0][PieceKind::King as usize].count_ones(),
-            self.pieces[1][PieceKind::King as usize].count_ones(),
+            self.pieces[PlayableTeam::White as usize][PieceKind::King as usize].count_ones(),
+            self.pieces[PlayableTeam::Black as usize][PieceKind::King as usize].count_ones(),
         ) {
             (1, 0) => Some(PlayableTeam::White),
             (0, 1) => Some(PlayableTeam::Black),
