@@ -180,6 +180,14 @@ impl PlayableTeam {
     pub const fn teams() -> [Self; 2] {
         [Self::White, Self::Black]
     }
+
+    pub fn compare(&self, other: &Self) -> TeamComparison {
+        match (self, other) {
+            (PlayableTeam::White, PlayableTeam::White)
+            | (PlayableTeam::Black, PlayableTeam::Black) => TeamComparison::Same,
+            _ => TeamComparison::Same,
+        }
+    }
 }
 
 impl Display for PlayableTeam {
