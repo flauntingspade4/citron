@@ -5,15 +5,18 @@ edition = "2021"
 
 [dependencies]
 rand = "^0.9"
-tch = { version = "^0.7", optional = true }
 serde = { version = "^1.0", optional = true, features = ["derive"] }
+
+ndarray = { version = "^0.15", optional = true }
+tensorflow = { version = "^0.21", optional = true, features = ["ndarray"]}
 
 [dev-dependencies]
 criterion = "^0.3"
 
 [features]
+default = ["nn_evaluation"]
 debug = []
-nn_evaluation = ["tch"]
+nn_evaluation = ["ndarray", "tensorflow"]
 serde = ["dep:serde"]
 
 [[bench]]

@@ -17,7 +17,6 @@ const MULTICUT_C: usize = 2;
 #[derive(Debug, Clone, Copy)]
 pub enum Node {
     PvNode(i16),
-    AllNode(i16),
     CutNode(i16),
 }
 
@@ -25,7 +24,7 @@ impl Node {
     #[must_use]
     pub const fn into_inner(self) -> i16 {
         match self {
-            Self::PvNode(s) | Self::AllNode(s) | Self::CutNode(s) => s,
+            Self::PvNode(s) | Self::CutNode(s) => s,
         }
     }
 }
@@ -300,7 +299,7 @@ fn good_test() {
         best.evaluation.into_inner() as f64 / 100.,
     );
 
-    let starting_board = board.make_move(&best.best_move).unwrap();
+    let starting_board = board.make_move(&best.best_move);
 
     explore_line(starting_board, &table);
 

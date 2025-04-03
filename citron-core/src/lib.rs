@@ -16,6 +16,8 @@ mod killer;
 pub mod magic;
 pub mod move_gen;
 mod move_ordering;
+#[cfg(feature = "nn_evaluation")]
+pub mod nn;
 pub mod pgn;
 pub mod piece;
 mod position;
@@ -27,12 +29,12 @@ pub use position::Position;
 
 pub use board::Board;
 pub use move_gen::MoveGen;
-use piece::PieceKind;
+use piece::{Piece, PieceKind};
 pub use transposition_table::hash;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Game {
-    board: Board,
+    pub board: Board,
     turn: u16,
     /// The material count. A negative count indicates it's in black's favour,
     /// and a positive in white's
@@ -59,17 +61,31 @@ impl Game {
     pub fn make_move(&self, played_move: &Move) -> Self {
         let mut game = self.clone();
 
-        if played_move.captured_piece_kind() != PieceKind::None {
-            if game.board.to_play() == PlayableTeam::White {
-                game.material += played_move.captured_piece_kind().value();
-            } else {
-                game.material -= played_move.captured_piece_kind().value();
-            }
-
-            game.absolute_material -= played_move.captured_piece_kind().value();
+        if game.board.to_play() == PlayableTeam::White {
+            game.material += played_move.captured_piece_kind().value();
+        } else {
+            game.material -= played_move.captured_piece_kind().value();
         }
 
+        game.absolute_material -= played_move.captured_piece_kind().value();
+
         game.board = game.board.make_move(played_move);
+        game.turn += 1;
+
+        game
+    }
+    pub fn add_piece(&self, added_piece: Piece, position: Position) -> Self {
+        let mut game = self.clone();
+
+        if game.board.to_play() == PlayableTeam::White {
+            game.material += added_piece.kind().value();
+        } else {
+            game.material -= added_piece.kind().value();
+        }
+
+        game.absolute_material += added_piece.kind().value();
+
+        game.board.add_piece(added_piece, position);
         game.turn += 1;
 
         game
@@ -85,21 +101,82 @@ impl Game {
         game
     }
 
+    pub fn castle(&self, castling_side: CastlingSide) -> Self {
+        let game = match self.to_play() {
+            PlayableTeam::White => match castling_side {
+                CastlingSide::QueenSide => {
+                    let king_moved = self.make_move(&Move::new(
+                        Position::new(4, 0),
+                        Position::new(2, 0),
+                        PieceKind::King,
+                        PieceKind::None,
+                    ));
+                    king_moved.make_move(&Move::new(
+                        Position::new(0, 0),
+                        Position::new(3, 0),
+                        PieceKind::Rook,
+                        PieceKind::None,
+                    ))
+                }
+                CastlingSide::KingSide => {
+                    let king_moved = self.make_move(&Move::new(
+                        Position::new(4, 0),
+                        Position::new(6, 0),
+                        PieceKind::King,
+                        PieceKind::None,
+                    ));
+                    king_moved.make_move(&Move::new(
+                        Position::new(0, 0),
+                        Position::new(5, 0),
+                        PieceKind::Rook,
+                        PieceKind::None,
+                    ))
+                }
+            },
+            PlayableTeam::Black => match castling_side {
+                CastlingSide::QueenSide => {
+                    let king_moved = self.make_move(&Move::new(
+                        Position::new(4, 7),
+                        Position::new(2, 7),
+                        PieceKind::King,
+                        PieceKind::None,
+                    ));
+                    king_moved.make_move(&Move::new(
+                        Position::new(0, 7),
+                        Position::new(3, 7),
+                        PieceKind::Rook,
+                        PieceKind::None,
+                    ))
+                }
+                CastlingSide::KingSide => {
+                    let king_moved = self.make_move(&Move::new(
+                        Position::new(4, 7),
+                        Position::new(6, 7),
+                        PieceKind::King,
+                        PieceKind::None,
+                    ));
+                    king_moved.make_move(&Move::new(
+                        Position::new(0, 7),
+                        Position::new(5, 7),
+                        PieceKind::Rook,
+                        PieceKind::None,
+                    ))
+                }
+            },
+        };
+
+        game
+    }
+
     /// Creates a board from a given FEN
     #[must_use]
     pub fn from_fen(fen: &str) -> Option<Self> {
         let board = Board::from_fen(fen)?;
-
         let mut fen_parts = fen.split(' ');
 
-        // Castling rights
         fen_parts.next()?;
         fen_parts.next()?;
-
-        // En passant
-        // fen_parts.next()?;
-
-        // Half move clock
+        fen_parts.next()?;
         fen_parts.next()?;
 
         let turn = fen_parts.next()?.parse().ok()?;
@@ -134,6 +211,11 @@ impl Default for Game {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub enum CastlingSide {
+    QueenSide,
+    KingSide,
 }
 
 /*

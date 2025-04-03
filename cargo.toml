@@ -3,6 +3,7 @@ members = [
     "citron-cli",
     "citron-core",
 ]
+resolver = "2"
 
 [profile.release]
 debug = true

@@ -1,19 +1,25 @@
-use crate::{killer::KillerMoves, move_gen::Move, transposition_table::TranspositionTable};
+use std::collections::HashMap;
+
+use crate::{killer::KillerMoves, move_gen::Move};
 
 const PREVIOUS_BEST_BONUS: u16 = 10_000;
 
 const TOOK_PIECE_MULTIPLIER: u16 = 10;
 const TAKING_PIECE_MULTIPLIER: u16 = 1;
 
-pub fn move_ordering(
+pub trait MoveOrderingEntry {
+    fn from_to_equals(&self, other: &Move) -> bool;
+}
+
+pub fn move_ordering<E: MoveOrderingEntry>(
     ply: u8,
     moves: &mut [Move],
-    (transposition_table, killer_table): (&mut TranspositionTable, &mut [KillerMoves]),
+    (transposition_table, killer_table): (&mut HashMap<u64, E>, &mut [KillerMoves]),
     hash: u64,
 ) {
     if let Some(best) = transposition_table.get(&hash) {
         for possible_move in moves.iter_mut() {
-            if possible_move.from_to() == best.best_move.from_to() {
+            if best.from_to_equals(possible_move) {
                 *possible_move.ordering_value_mut() += PREVIOUS_BEST_BONUS;
                 break;
             }

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use crate::{analysis::Node, move_gen::Move, Board, PlayableTeam, Position};
+use crate::{
+    analysis::Node, move_gen::Move, move_ordering::MoveOrderingEntry, Board, PlayableTeam, Position,
+};
 
 use rand::{Fill, RngCore};
 
@@ -51,5 +53,11 @@ impl TranspositionEntry {
             evaluation,
             best_move,
         }
+    }
+}
+
+impl MoveOrderingEntry for TranspositionEntry {
+    fn from_to_equals(&self, other: &Move) -> bool {
+        self.best_move.from_to() == other.from_to()
     }
 }

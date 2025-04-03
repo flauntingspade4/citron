@@ -88,6 +88,7 @@ impl Board {
 
         board.to_play = !board.to_play;
 
+        // TODO : Investigate if this should always happen
         if board.to_play == PlayableTeam::Black {
             board.hash ^= ZOBRIST_KEYS.1;
         }
