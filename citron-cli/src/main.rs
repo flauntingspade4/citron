@@ -1,6 +1,11 @@
 // use chesty_core::{explore_line, hash, Board, Position};
 
-use citron_core::{analysis::explore_line, move_gen::Move, Board, Position};
+use std::{collections::HashMap, path::Path};
+
+use citron_core::{
+    analysis::explore_line, move_gen::Move, nn::session_handle::BZSessionHandle, Board, Game,
+    Position,
+};
 
 use clap::{App, Arg, SubCommand};
 
@@ -49,6 +54,7 @@ fn main() {
         )
         .get_matches();
 
+    let handle = BZSessionHandle::load(Some(Path::new(r"citron-core/model")));
     match matches.subcommand() {
         ("analyse", Some(t)) => {
             let depth = if let Some(depth) = t.value_of("depth") {
@@ -60,45 +66,45 @@ fn main() {
             let fen = t.value_of("fen").unwrap();
             let board = Board::from_fen(fen).unwrap();
 
-            let table = board.iterative_deepening_ply(depth);
+            todo!()
+            // let table = board.iterative_deepening_ply(depth);
 
-            if t.is_present("explore") {
-                explore_line(board, &table);
-            } else {
-                let best = table.get(&board.hash()).unwrap();
+            // if t.is_present("explore") {
+            // explore_line(board, &table);
+            // } else {
+            // let best = table.get(&board.hash()).unwrap();
 
-                // let (from, to) = best.best_move;
-                println!(
-                    "Best move in position: {:?} {}",
-                    best.best_move,
-                    best.evaluation.into_inner() as f64 / 100.
-                );
-            }
+            // println!(
+            // "Best move in position: {:?} {}",
+            // best.best_move,
+            // best.evaluation.into_inner() as f64 / 100.
+            // );
+            // }
         }
         ("play", Some(t)) => {
             let depth = if let Some(depth) = t.value_of("depth") {
-                depth.parse().unwrap_or(8)
+                depth.parse().unwrap_or(4)
             } else {
-                8
+                4
             };
 
             let fen = t
                 .value_of("fen")
                 .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 0");
-            let mut board = Board::from_fen(fen).unwrap();
+            let mut board = Game::from_fen(fen).unwrap();
 
             println!("{} {}", board.material, board.absolute_material);
 
             loop {
-                let eval = board.iterative_deepening_ply(depth);
-                let best = eval.get(&board.hash()).unwrap();
+                let eval = board.nn_evaluate(depth, &handle);
+                let best = eval.get(&board.board.hash()).unwrap();
                 println!(
-                    "{:?} {}",
+                    "Best move: {}",
                     best.best_move,
-                    best.evaluation.into_inner() as f64 / 100.
+                    // best.evaluation.into_inner() as f64 / 100.
                 );
 
-                board = board.make_move(&best.best_move).unwrap();
+                board = board.make_move(&best.best_move);
 
                 println!("{}", board);
 
@@ -107,11 +113,11 @@ fn main() {
                 let played_move = Move::new(
                     from,
                     to,
-                    board.kind_at(board.to_play(), from),
-                    board.kind_at(!board.to_play(), to),
+                    board.board.kind_at(board.to_play(), from),
+                    board.board.kind_at(!board.to_play(), to),
                 );
 
-                board = board.make_move(&played_move).unwrap();
+                board = board.make_move(&played_move);
 
                 println!("{:?}", board);
             }

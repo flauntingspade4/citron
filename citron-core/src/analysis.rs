@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 
 use crate::{
     killer::KillerMoves,
+    move_gen::Move,
     move_ordering::move_ordering,
     piece::{PieceKind, KING_VALUE},
     transposition_table::{TranspositionEntry, TranspositionTable},
@@ -13,6 +14,10 @@ const INF: i16 = std::i16::MAX;
 
 const MULTICUT_M: usize = 5;
 const MULTICUT_C: usize = 2;
+
+const NULL_USE: bool = true;
+const NULL_REDUCTION: u8 = 3;
+// const
 
 #[derive(Debug, Clone, Copy)]
 pub enum Node {
@@ -120,6 +125,21 @@ impl Game {
             (transposition_table, killer_table),
             self.board.hash(),
         );
+
+        // Null move
+        if self.null_move_condition(&moves) {
+            let null_board = self.make_null_move();
+            let null_score = null_board.evaluate_private(
+                depth - NULL_REDUCTION,
+                ply + 1,
+                -beta,
+                -(beta - 1),
+                (transposition_table, killer_table),
+            );
+            if null_score >= beta {
+                return null_score;
+            }
+        }
 
         // Multi-cut
         if depth >= 3 {
@@ -271,6 +291,13 @@ impl Game {
         }
 
         alpha
+    }
+
+    fn null_move_condition(&self, moves: &Vec<Move>) -> bool {
+        moves
+            .iter()
+            .any(|m| m.captured_piece_kind() != PieceKind::King)
+            && NULL_USE
     }
 }
 

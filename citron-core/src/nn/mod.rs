@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use ndarray::{Array3, Axis};
+use ndarray::{Array3, ArrayView, Axis};
 use session_handle::BZSessionHandle;
 use tensorflow::Tensor;
 
@@ -16,16 +16,86 @@ use crate::{
 pub mod session_handle;
 
 #[derive(Clone, Debug)]
-pub struct EvaluateOutput(Tensor<f32>);
+pub enum EvaluateOutput {
+    Latent(Tensor<f32>),
+    KingCapture(PlayableTeam),
+}
+
+impl EvaluateOutput {
+    pub fn compare(
+        &self,
+        other: &Self,
+        handle: &BZSessionHandle,
+    ) -> (Ordering, Option<Tensor<f32>>) {
+        match (self, other) {
+            (EvaluateOutput::Latent(lhs), EvaluateOutput::Latent(rhs)) => {
+                let (a, b) = handle.compare_encoded(lhs, rhs).unwrap();
+                (a, Some(b))
+            }
+            (EvaluateOutput::Latent(_), EvaluateOutput::KingCapture(playable_team)) => (
+                match playable_team {
+                    PlayableTeam::White => Ordering::Less,
+                    PlayableTeam::Black => Ordering::Greater,
+                },
+                None,
+            ),
+            (EvaluateOutput::KingCapture(playable_team), EvaluateOutput::Latent(_)) => (
+                match playable_team {
+                    PlayableTeam::White => Ordering::Greater,
+                    PlayableTeam::Black => Ordering::Less,
+                },
+                None,
+            ),
+            (EvaluateOutput::KingCapture(lhs), EvaluateOutput::KingCapture(rhs)) => (
+                match (lhs, rhs) {
+                    (PlayableTeam::White, PlayableTeam::Black) => Ordering::Greater,
+                    (PlayableTeam::Black, PlayableTeam::White) => Ordering::Less,
+                    _ => Ordering::Equal,
+                },
+                None,
+            ),
+        }
+    }
+}
 
 impl Game {
     pub fn nn_evaluate(
         &self,
         depth: u8,
+        handle: &BZSessionHandle,
+    ) -> HashMap<u64, NNTranspositionEntry> {
+        let mut transposition_table = HashMap::new();
+        let mut killer_table = Vec::with_capacity(depth as usize);
+
+        killer_table.resize_with(depth as usize, KillerMoves::default);
+        match self.to_play() {
+            PlayableTeam::White => self.nn_evaluate_max(
+                depth,
+                0,
+                None,
+                None,
+                (&mut transposition_table, &mut killer_table),
+                handle,
+            ),
+            PlayableTeam::Black => self.nn_evaluate_min(
+                depth,
+                0,
+                None,
+                None,
+                (&mut transposition_table, &mut killer_table),
+                handle,
+            ),
+        };
+
+        transposition_table
+    }
+    pub fn nn_evaluate_max(
+        &self,
+        depth: u8,
         ply: u8,
         mut alpha: Option<EvaluateOutput>,
         beta: Option<EvaluateOutput>,
-        (transposition_table, killer_moves): (
+        (transposition_table, killer_table): (
             &mut HashMap<u64, NNTranspositionEntry>,
             &mut [KillerMoves],
         ),
@@ -44,83 +114,220 @@ impl Game {
                 self.board
             );
             let network_input =
-                board_to_network_input(&self.board, !self.board.to_play()).insert_axis(Axis(0));
-            return EvaluateOutput(handle.encode(network_input.into()).unwrap());
+                board_to_network_input(&self.board, PlayableTeam::White).insert_axis(Axis(0));
+            return EvaluateOutput::Latent(handle.encode(network_input.into()).unwrap());
+        }
+
+        if let Some(found) = transposition_table.get(&self.board.hash()) {
+            if found.depth >= depth {
+                return found.evaluation.clone();
+            }
         }
 
         let mut moves = MoveGen::new(&self.board).into_inner();
-        for m in &moves {
-            println!("{m}");
-        }
-        // move_ordering(
-        // ply,
-        // &mut moves,
-        // (transposition_table, killer_moves),
-        // self.board.hash(),
-        // );
+        // for m in &moves {
+        // println!("{m}");
+        // }
+        move_ordering(
+            ply,
+            &mut moves,
+            (transposition_table, killer_table),
+            self.board.hash(),
+        );
 
         let mut best_move = None;
-        if let Err((beta_cutoff, possible_move)) = moves.into_iter().try_for_each(|possible_move| {
+        match moves.into_iter().try_for_each(|possible_move| {
+            if possible_move.captured_piece_kind() == PieceKind::King {
+                return Err((
+                    EvaluateOutput::KingCapture(PlayableTeam::Black),
+                    possible_move,
+                ));
+            }
             let possible_board = self.make_move(&possible_move);
 
-            let evaluation = possible_board.nn_evaluate(
+            let evaluation = possible_board.nn_evaluate_max(
                 depth - 1,
                 ply + 1,
-                beta.clone(),
                 alpha.clone(),
-                (transposition_table, killer_moves),
+                beta.clone(),
+                (transposition_table, killer_table),
                 handle,
             );
+
+            if let Some(beta) = &beta {
+                let (ord, result) = evaluation.compare(&beta, &handle);
+                // let (ord, result) = handle.compare_encoded(&evaluation.0, &beta.0).unwrap();
+                if ord == Ordering::Greater {
+                    println!("beta cutoff due to result = {:?}", result);
+                    return Err((evaluation, possible_move));
+                }
+            }
 
             if alpha.is_none() {
                 best_move = Some(possible_move);
                 alpha = Some(evaluation);
                 println!(
-                    "depth = {}, alpha is not set so setting to {}\n{}",
+                    "depth = {}, alpha is not set so setting to\n{}",
+                    depth, possible_board.board
+                );
+            } else {
+                let (ord, result) = evaluation.compare(&alpha.as_ref().unwrap(), &handle);
+                println!(
+                    "depth = {}, result is {:?} against alpha\n{}",
+                    depth, result, possible_board.board
+                );
+                if ord == Ordering::Greater {
+                    println!("Setting alpha");
+
+                    best_move = Some(possible_move);
+                    alpha = Some(evaluation);
+                }
+            }
+
+            Ok(())
+        }) {
+            Ok(_) => {
+                if let Some(best_move) = best_move {
+                    let transposition_entry =
+                        NNTranspositionEntry::new(depth, alpha.clone().unwrap(), best_move);
+
+                    transposition_table.insert(self.board.hash(), transposition_entry);
+                }
+                alpha.unwrap()
+            }
+            Err((beta_cutoff, possible_move)) => {
+                if possible_move.captured_piece_kind() == PieceKind::None {
+                    killer_table[ply as usize].add_move(possible_move.from_to());
+                }
+
+                let transposition_entry =
+                    NNTranspositionEntry::new(depth, beta_cutoff.clone(), possible_move);
+
+                transposition_table.insert(self.board.hash(), transposition_entry);
+
+                beta_cutoff
+            }
+        }
+    }
+
+    pub fn nn_evaluate_min(
+        &self,
+        depth: u8,
+        ply: u8,
+        alpha: Option<EvaluateOutput>,
+        mut beta: Option<EvaluateOutput>,
+        (transposition_table, killer_table): (
+            &mut HashMap<u64, NNTranspositionEntry>,
+            &mut [KillerMoves],
+        ),
+        handle: &BZSessionHandle,
+    ) -> EvaluateOutput {
+        // println!(
+        //     "Depth = {}, to_play = {}\n{}",
+        //     depth,
+        //     self.board.to_play(),
+        //     self.board
+        // );
+        if depth == 0 {
+            println!(
+                "At depth = 0, encoding for {}\n{}",
+                !self.board.to_play(),
+                self.board
+            );
+            let network_input =
+                board_to_network_input(&self.board, PlayableTeam::White).insert_axis(Axis(0));
+            return EvaluateOutput::Latent(handle.encode(network_input.into()).unwrap());
+        }
+
+        if let Some(found) = transposition_table.get(&self.board.hash()) {
+            if found.depth >= depth {
+                return found.evaluation.clone();
+            }
+        }
+
+        let mut moves = MoveGen::new(&self.board).into_inner();
+        move_ordering(
+            ply,
+            &mut moves,
+            (transposition_table, killer_table),
+            self.board.hash(),
+        );
+
+        let mut best_move = None;
+        match moves.into_iter().try_for_each(|possible_move| {
+            if possible_move.captured_piece_kind() == PieceKind::King {
+                return Err((
+                    EvaluateOutput::KingCapture(PlayableTeam::White),
+                    possible_move,
+                ));
+            }
+
+            let possible_board = self.make_move(&possible_move);
+
+            let evaluation = possible_board.nn_evaluate_max(
+                depth - 1,
+                ply + 1,
+                alpha.clone(),
+                beta.clone(),
+                (transposition_table, killer_table),
+                handle,
+            );
+
+            if let Some(alpha) = &alpha {
+                let (ord, result) = evaluation.compare(alpha, &handle);
+                if ord == Ordering::Less {
+                    println!("alpha cutoff with result {:?} on depth {depth}", result);
+                    return Err((evaluation, possible_move));
+                }
+            }
+
+            if beta.is_none() {
+                best_move = Some(possible_move);
+                beta = Some(evaluation);
+                println!(
+                    "depth = {}, beta is not set so setting to {}\n{}",
                     depth,
                     possible_board.to_play(),
                     possible_board.board
                 );
             } else {
-                let (ord, result) = handle
-                    .compare_encoded(&evaluation.0, &alpha.as_ref().unwrap().0)
-                    .unwrap();
+                let (ord, result) = evaluation.compare(&beta.as_ref().unwrap(), &handle);
+                // let (ord, result) = handle
+                // .compare_encoded(&evaluation.0, &beta.as_ref().unwrap().0)
+                // .unwrap();
                 println!(
-                    "depth = {}, result is [{}, {}]\n{}",
-                    depth, result[0], result[1], possible_board.board
+                    "depth = {}, result is unknown against beta\n{}",
+                    depth, possible_board.board
                 );
-                if ord != Ordering::Greater {
-                    return Ok(());
-                }
-                println!("Setting alpha");
-                if let Some(beta) = &beta {
-                    let (ord, result) = handle.compare_encoded(&evaluation.0, &beta.0).unwrap();
-                    if ord == Ordering::Greater {
-                        println!("Setting beta");
-                        return Err((evaluation.0, possible_move));
-                    }
-                }
+                if ord == Ordering::Less {
+                    println!("Setting beta as result = {:?}", result);
 
-                best_move = Some(possible_move);
-                alpha = Some(evaluation);
+                    best_move = Some(possible_move);
+                    beta = Some(evaluation);
+                }
             }
 
             Ok(())
         }) {
-            let transposition_entry =
-                NNTranspositionEntry::new(depth, beta_cutoff.clone(), possible_move);
+            Ok(_) => {
+                if let Some(best_move) = best_move {
+                    let transposition_entry =
+                        NNTranspositionEntry::new(depth, beta.clone().unwrap(), best_move);
 
-            transposition_table.insert(self.board.hash(), transposition_entry);
-
-            EvaluateOutput(beta_cutoff)
-        } else {
-            if let Some(best_move) = best_move {
-                let transposition_entry =
-                    NNTranspositionEntry::new(depth, alpha.clone().unwrap().0, best_move);
-
-                transposition_table.insert(self.board.hash(), transposition_entry);
+                    transposition_table.insert(self.board.hash(), transposition_entry);
+                }
+                beta.unwrap()
             }
-            alpha.unwrap()
+            Err((alpha_cutoff, possible_move)) => {
+                if possible_move.captured_piece_kind() == PieceKind::None {
+                    killer_table[ply as usize].add_move(possible_move.from_to());
+                }
+                let transposition_entry =
+                    NNTranspositionEntry::new(depth, alpha_cutoff.clone(), possible_move);
+                transposition_table.insert(self.board.hash(), transposition_entry);
+
+                alpha_cutoff
+            }
         }
     }
 }
@@ -161,17 +368,46 @@ pub fn board_to_network_input(board: &Board, played_team: PlayableTeam) -> Array
     array
 }
 
+pub fn add_move_information_to_nn_input(board: &Board, input: &mut Array3<f32>) {
+    let first_turn_array = [if board.to_play() == PlayableTeam::White {
+        1.
+    } else {
+        0.
+    }; 64];
+    let second_turn_array = [if board.to_play() == PlayableTeam::Black {
+        1.
+    } else {
+        0.
+    }; 64];
+    input
+        .append(
+            Axis(2),
+            ArrayView::from(&first_turn_array)
+                .into_shape((8, 8, 1))
+                .unwrap(),
+        )
+        .unwrap();
+    input
+        .append(
+            Axis(2),
+            ArrayView::from(&second_turn_array)
+                .into_shape((8, 8, 1))
+                .unwrap(),
+        )
+        .unwrap();
+}
+
 pub struct NNTranspositionEntry {
     pub depth: u8,
-    pub latent: Tensor<f32>,
+    pub evaluation: EvaluateOutput,
     pub best_move: Move,
 }
 
 impl NNTranspositionEntry {
-    pub fn new(depth: u8, latent: Tensor<f32>, best_move: Move) -> Self {
+    pub fn new(depth: u8, evaluation: EvaluateOutput, best_move: Move) -> Self {
         Self {
             depth,
-            latent,
+            evaluation,
             best_move,
         }
     }
@@ -186,23 +422,12 @@ impl MoveOrderingEntry for NNTranspositionEntry {
 #[test]
 fn nn_test() {
     let handle = BZSessionHandle::load(None);
-    let depth = 1;
+    let depth = 3;
 
     // let game = Game::new();
-    let game = Game::from_fen("3Q4/6pk/1R5p/8/4p3/4P1P1/4NP2/5K2 w - - 0 44").unwrap();
-    let mut transposition_table = HashMap::new();
-    let mut killer_table = Vec::with_capacity(depth as usize);
+    let game = Game::from_fen("2k5/1p6/1p5p/p6p/2Pp1P2/3P2K1/PP1r2PP/1R1Br3 w - - 0 1").unwrap();
 
-    killer_table.resize_with(depth as usize, KillerMoves::default);
-
-    game.nn_evaluate(
-        depth,
-        0,
-        None,
-        None,
-        (&mut transposition_table, killer_table.as_mut_slice()),
-        &handle,
-    );
+    let transposition_table = game.nn_evaluate(depth, &handle);
 
     let best = transposition_table
         .get(&game.board.hash())
@@ -211,6 +436,15 @@ fn nn_test() {
         .clone();
 
     println!("Best move is {}", best);
+
+    if let Some(true_best) = transposition_table.get(
+        &Game::from_fen("2k5/1p6/1p5p/p7/2Pp1Pp1/3P2K1/PP1r2PP/4R3 b - - 0 2")
+            .unwrap()
+            .board
+            .hash(),
+    ) {
+        println!("True best is {}", true_best.best_move);
+    }
 }
 
 #[test]
@@ -218,12 +452,11 @@ fn position_comparison() {
     let handle = BZSessionHandle::load(None);
 
     let position_1 =
-        Game::from_fen("2q1r3/p4pk1/1pBQ1np1/2p4p/5N2/1P2P1PP/P3bP2/2RR2K1 b - - 2 23").unwrap();
+        Game::from_fen("2k5/1p6/1p5p/p6p/2Pp1P2/3P2K1/PP1r2PP/1R1Br3 w - - 0 1").unwrap();
     let input_1 = board_to_network_input(&position_1.board, position_1.to_play())
         .insert_axis(Axis(0))
         .into();
-    let position_2 =
-        Game::from_fen("2q1r3/p4pk1/bpBQ2p1/2p4p/4nN2/1P2P1PP/P4P2/2RR2K1 b - - 2 23").unwrap();
+    let position_2 = Game::from_fen("2k5/1p6/1p5p/p7/2Pp1Pp1/3P2K1/PP1r2PP/4R3 b - - 0 2").unwrap();
     let input_2 = board_to_network_input(&position_2.board, position_2.to_play())
         .insert_axis(Axis(0))
         .into();
