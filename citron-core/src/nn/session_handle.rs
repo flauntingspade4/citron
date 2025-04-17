@@ -6,40 +6,18 @@ use crate::Board;
 
 use super::board_to_network_input;
 
-/*#[test]
-fn flip_call_test() {
-    use crate::positions::board_to_network_input;
-    use citron_core::Board;
-    let handle = BZSessionHandle::load(None);
-
-    let board = &Board::from_fen("k7/2n5/1n6/3r4/4R3/6N1/5N2/7K w - - 0 1").unwrap();
-    let board_input = board_to_network_input(&board, citron_core::PlayableTeam::White);
-    let output = handle.call(Tensor::from(&board_input)).unwrap();
-
-    let flipped_board = board.make_null_move();
-    let flipped_board_input =
-        board_to_network_input(&flipped_board, citron_core::PlayableTeam::Black);
-    let flipped_output = handle.call(Tensor::from(flipped_board_input)).unwrap();
-
-    assert_eq!(output.0, flipped_output.0);
-    assert_eq!(output.1, flipped_output.1);
-}*/
-
-pub struct BZSessionHandle {
+pub struct HBSessionHandle {
     graph: Graph,
     bundle: SavedModelBundle,
 }
 
-impl BZSessionHandle {
+impl HBSessionHandle {
     pub fn load(path: Option<&Path>) -> Self {
         let path: &Path = path.unwrap_or(&Path::new(r"model"));
 
         let mut graph = Graph::new();
         let bundle = SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, path)
             .expect("Can't load saved model");
-
-        // let sign_def = bundle.meta_graph_def().signatures();
-        // println!("SIGNATURES: {:#?}", sign_def);
 
         Self { graph, bundle }
     }

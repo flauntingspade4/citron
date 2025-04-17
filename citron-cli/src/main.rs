@@ -3,7 +3,7 @@
 use std::{collections::HashMap, path::Path};
 
 use citron_core::{
-    analysis::explore_line, move_gen::Move, nn::session_handle::BZSessionHandle, Board, Game,
+    analysis::explore_line, move_gen::Move, nn::session_handle::HBSessionHandle, Board, Game,
     Position,
 };
 
@@ -54,7 +54,7 @@ fn main() {
         )
         .get_matches();
 
-    let handle = BZSessionHandle::load(Some(Path::new(r"citron-core/model")));
+    let handle = HBSessionHandle::load(Some(Path::new(r"citron-core/model")));
     match matches.subcommand() {
         ("analyse", Some(t)) => {
             let depth = if let Some(depth) = t.value_of("depth") {
@@ -96,7 +96,7 @@ fn main() {
             println!("{} {}", board.material, board.absolute_material);
 
             loop {
-                let eval = board.nn_evaluate(depth, &handle);
+                let eval = board.nn_evaluate_iterative(depth, &handle);
                 let best = eval.get(&board.board.hash()).unwrap();
                 println!(
                     "Best move: {}",

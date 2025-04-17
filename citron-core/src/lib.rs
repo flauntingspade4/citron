@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 pub mod analysis;
 mod board;
 mod evaluation;
+#[cfg(feature = "nn_evaluation")]
+pub mod ga;
 mod heatmap;
 mod killer;
 pub mod magic;

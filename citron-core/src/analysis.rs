@@ -293,7 +293,7 @@ impl Game {
         alpha
     }
 
-    fn null_move_condition(&self, moves: &Vec<Move>) -> bool {
+    pub(crate) fn null_move_condition(&self, moves: &Vec<Move>) -> bool {
         moves
             .iter()
             .any(|m| m.captured_piece_kind() != PieceKind::King)
